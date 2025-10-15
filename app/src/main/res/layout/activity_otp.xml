@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/white"
+    android:padding="24dp">
+
+    <ImageView
+        android:id="@+id/logoOtp"
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:src="@drawable/logo_foodshop"
+        android:contentDescription="Logo"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="40dp"/>
+
+    <TextView
+        android:id="@+id/tvOtpTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Xác thực OTP"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        android:textColor="@android:color/black"
+        app:layout_constraintTop_toBottomOf="@id/logoOtp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="24dp"/>
+
+    <TextView
+        android:id="@+id/tvEmail"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Mã OTP đã được gửi đến\nemail@example.com"
+        android:textSize="14sp"
+        android:textColor="@android:color/darker_gray"
+        android:gravity="center"
+        app:layout_constraintTop_toBottomOf="@id/tvOtpTitle"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="16dp"/>
+
+    <LinearLayout
+        android:id="@+id/otpContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        app:layout_constraintTop_toBottomOf="@id/tvEmail"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="40dp">
+
+        <EditText
+            android:id="@+id/etOtp1"
+            android:layout_width="50dp"
+            android:layout_height="60dp"
+            android:gravity="center"
+            android:inputType="number"
+            android:maxLength="1"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:background="@drawable/card_rounded_white"
+            android:elevation="4dp"
+            android:layout_margin="4dp"/>
+
+        <EditText
+            android:id="@+id/etOtp2"
+            android:layout_width="50dp"
+            android:layout_height="60dp"
+            android:gravity="center"
+            android:inputType="number"
+            android:maxLength="1"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:background="@drawable/card_rounded_white"
+            android:elevation="4dp"
+            android:layout_margin="4dp"/>
+
+        <EditText
+            android:id="@+id/etOtp3"
+            android:layout_width="50dp"
+            android:layout_height="60dp"
+            android:gravity="center"
+            android:inputType="number"
+            android:maxLength="1"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:background="@drawable/card_rounded_white"
+            android:elevation="4dp"
+            android:layout_margin="4dp"/>
+
+        <EditText
+            android:id="@+id/etOtp4"
+            android:layout_width="50dp"
+            android:layout_height="60dp"
+            android:gravity="center"
+            android:inputType="number"
+            android:maxLength="1"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:background="@drawable/card_rounded_white"
+            android:elevation="4dp"
+            android:layout_margin="4dp"/>
+
+        <EditText
+            android:id="@+id/etOtp5"
+            android:layout_width="50dp"
+            android:layout_height="60dp"
+            android:gravity="center"
+            android:inputType="number"
+            android:maxLength="1"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:background="@drawable/card_rounded_white"
+            android:elevation="4dp"
+            android:layout_margin="4dp"/>
+
+        <EditText
+            android:id="@+id/etOtp6"
+            android:layout_width="50dp"
+            android:layout_height="60dp"
+            android:gravity="center"
+            android:inputType="number"
+            android:maxLength="1"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:background="@drawable/card_rounded_white"
+            android:elevation="4dp"
+            android:layout_margin="4dp"/>
+
+    </LinearLayout>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnVerifyOtp"
+        android:layout_width="0dp"
+        android:layout_height="56dp"
+        android:text="Xác thực"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        app:cornerRadius="12dp"
+        android:backgroundTint="#FF5722"
+        app:layout_constraintTop_toBottomOf="@id/otpContainer"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="40dp"/>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnResendOtp"
+        style="@style/Widget.Material3.Button.TextButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Gửi lại mã OTP"
+        android:textColor="#FF5722"
+        app:layout_constraintTop_toBottomOf="@id/btnVerifyOtp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="16dp"/>
+
+    <TextView
+        android:id="@+id/tvStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Status"
+        android:textSize="14sp"
+        android:textColor="#FF5722"
+        android:gravity="center"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/btnResendOtp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="16dp"/>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+
