@@ -14,6 +14,10 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
 
+    <!-- Hardware features (optional) -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -57,6 +61,26 @@
             android:name=".ui.profile.ProfileActivity"
             android:exported="false"
             android:label="Hồ sơ cá nhân"/>
+
+        <activity
+            android:name=".ui.profile.EditProfileActivity"
+            android:exported="false"
+            android:label="Chỉnh sửa hồ sơ"/>
+
+        <activity
+            android:name=".ui.profile.ChangePasswordActivity"
+            android:exported="false"
+            android:label="Đổi mật khẩu"/>
+
+        <activity
+            android:name=".ui.auth.forgotpassword.ForgotPasswordActivity"
+            android:exported="false"
+            android:label="Quên mật khẩu"/>
+
+        <activity
+            android:name=".ui.auth.forgotpassword.ResetPasswordActivity"
+            android:exported="false"
+            android:label="Đặt lại mật khẩu"/>
 
         <!-- File Provider for sharing files -->
         <provider

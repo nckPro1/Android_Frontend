@@ -41,7 +41,7 @@ public class LoginActivity extends AppCompatActivity {
     private EditText etEmail, etPassword;
     private Button btnLogin;
     private MaterialButton btnLoginGoogle;
-    private TextView tvStatus, tvCreateAccount;
+    private TextView tvStatus, tvCreateAccount, tvForgotPassword;
 
     private TokenManager tokenManager;
     private ApiService apiService;
@@ -75,6 +75,7 @@ public class LoginActivity extends AppCompatActivity {
         btnLogin = findViewById(R.id.btnLogin);
         btnLoginGoogle = findViewById(R.id.btnLoginGoogle);
         tvCreateAccount = findViewById(R.id.tvCreateAccount);
+        tvForgotPassword = findViewById(R.id.forgotPassword);
         tvStatus = findViewById(R.id.tvStatus);
         tvStatus.setVisibility(View.GONE);
     }
@@ -109,6 +110,7 @@ public class LoginActivity extends AppCompatActivity {
     private void setupClickListeners() {
         btnLogin.setOnClickListener(v -> login());
         tvCreateAccount.setOnClickListener(v -> startActivity(new Intent(this, RegisterActivity.class)));
+        tvForgotPassword.setOnClickListener(v -> startActivity(new Intent(this, com.example.frontend.ui.auth.forgotpassword.ForgotPasswordActivity.class)));
         btnLoginGoogle.setOnClickListener(v -> signInWithGoogle());
     }
 

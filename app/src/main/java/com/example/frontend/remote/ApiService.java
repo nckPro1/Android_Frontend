@@ -3,11 +3,14 @@ package com.example.frontend.remote;
 // Import các model cần thiết
 import com.example.frontend.model.ApiResponse;
 import com.example.frontend.model.AuthResponse;
+import com.example.frontend.model.ChangePasswordRequest;
+import com.example.frontend.model.ForgotPasswordRequest;
 import com.example.frontend.model.GoogleLoginRequest;
 import com.example.frontend.model.LoginRequest;
 import com.example.frontend.model.OTPVerifyRequest;
 import com.example.frontend.model.RegisterRequest; // Thêm import này
 import com.example.frontend.model.ResendOTPRequest;
+import com.example.frontend.model.ResetPasswordRequest;
 import com.example.frontend.model.UserDto;
 
 import okhttp3.MultipartBody;
@@ -53,4 +56,16 @@ public interface ApiService {
     @Multipart
     @POST("/api/user/upload-avatar")
     Call<ApiResponse> uploadAvatar(@Header("Authorization") String token, @Part MultipartBody.Part file);
+
+    // ✅ THÊM ENDPOINT CHO CHANGE PASSWORD
+    @POST("/api/user/change-password")
+    Call<ApiResponse> changePassword(@Header("Authorization") String token, @Body ChangePasswordRequest changePasswordRequest);
+
+    // ✅ THÊM ENDPOINT CHO FORGOT PASSWORD
+    @POST("/api/auth/forgot-password")
+    Call<ApiResponse> forgotPassword(@Body ForgotPasswordRequest forgotPasswordRequest);
+
+    // ✅ THÊM ENDPOINT CHO RESET PASSWORD
+    @POST("/api/auth/reset-password")
+    Call<ApiResponse> resetPassword(@Body ResetPasswordRequest resetPasswordRequest);
 }

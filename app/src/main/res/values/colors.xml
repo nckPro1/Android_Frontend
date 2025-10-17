@@ -1,6 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <color name="orange_deep">#FF5722</color>
+    <color name="orange_light">#FFC107</color>
+
     <color name="teal_200">#80CBC4</color>
     <color name="teal_700">#00796B</color>
-    <color name="white">#FFFFFF</color>
-    <color name="black">#000000</color>
-</resources>
+
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <color name="gray_background">#F5F7FA</color>
+    <color name="gray_text_primary">#333333</color>
+    <color name="gray_text_secondary">#666666</color>
+    <color name="green_save_button">#4CAF50</color> <!-- Thêm màu xanh cho nút Save --></resources>
