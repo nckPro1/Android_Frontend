@@ -56,7 +56,10 @@ public class ProfileMenuAdapter extends RecyclerView.Adapter<ProfileMenuAdapter.
         public void bind(final ProfileMenuItem item, final OnItemClickListener listener) {
             ivMenuIcon.setImageResource(item.getIconResId());
             tvMenuLabel.setText(item.getLabel());
-            itemView.setOnClickListener(v -> listener.onItemClick(item));
+            itemView.setOnClickListener(v -> {
+                android.util.Log.d("ProfileMenuAdapter", "Item clicked: " + item.getLabel() + " (ID: " + item.getId() + ")");
+                listener.onItemClick(item);
+            });
         }
     }
 }

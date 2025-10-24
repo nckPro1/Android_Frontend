@@ -194,29 +194,6 @@
 
                     </LinearLayout>
 
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:orientation="horizontal">
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Địa chỉ:"
-                            android:textColor="@color/gray_text_secondary"
-                            android:textSize="14sp" />
-
-                        <TextView
-                            android:id="@+id/tvDisplayAddress"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:textColor="@color/black"
-                            android:textSize="14sp"
-                            tools:text="123 Main St" />
-
-                    </LinearLayout>
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -307,22 +284,6 @@
 
                     </com.google.android.material.textfield.TextInputLayout>
 
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginBottom="16dp"
-                        android:hint="Địa chỉ"
-                        app:boxStrokeColor="@color/orange_deep"
-                        app:hintTextColor="@color/orange_deep">
-
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/etAddress"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:inputType="textPostalAddress"
-                            android:textSize="16sp" />
-
-                    </com.google.android.material.textfield.TextInputLayout>
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnSave"

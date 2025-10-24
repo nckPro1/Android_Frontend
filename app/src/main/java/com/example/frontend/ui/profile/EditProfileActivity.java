@@ -38,8 +38,8 @@ public class EditProfileActivity extends AppCompatActivity {
     // Views
     private ShapeableImageView imgAvatar;
     private TextView tvUserName, tvUserEmail, tvUserId;
-    private TextView tvDisplayFullName, tvDisplayPhone, tvDisplayAddress, tvDisplayRole;
-    private TextInputEditText etFullName, etPhoneNumber, etAddress;
+    private TextView tvDisplayFullName, tvDisplayPhone, tvDisplayRole;
+    private TextInputEditText etFullName, etPhoneNumber;
     private MaterialButton btnSave, btnEdit;
     private ProgressBar progressBar, progressAvatar;
     private MaterialCardView cardProfileInfo, cardEditForm;
@@ -94,11 +94,9 @@ public class EditProfileActivity extends AppCompatActivity {
         tvUserId = findViewById(R.id.tvUserId);
         tvDisplayFullName = findViewById(R.id.tvDisplayFullName);
         tvDisplayPhone = findViewById(R.id.tvDisplayPhone);
-        tvDisplayAddress = findViewById(R.id.tvDisplayAddress);
         tvDisplayRole = findViewById(R.id.tvDisplayRole);
         etFullName = findViewById(R.id.etFullName);
         etPhoneNumber = findViewById(R.id.etPhoneNumber);
-        etAddress = findViewById(R.id.etAddress);
         btnSave = findViewById(R.id.btnSave);
         btnEdit = findViewById(R.id.btnEdit);
         progressBar = findViewById(R.id.progressBar);
@@ -144,12 +142,10 @@ public class EditProfileActivity extends AppCompatActivity {
 
         tvDisplayFullName.setText(user.getFullName());
         tvDisplayPhone.setText(user.getPhoneNumber());
-        tvDisplayAddress.setText(user.getAddress());
         tvDisplayRole.setText(user.getRoleId() != null && user.getRoleId() == 2 ? "Quản trị viên" : "Người dùng");
 
         etFullName.setText(user.getFullName());
         etPhoneNumber.setText(user.getPhoneNumber());
-        etAddress.setText(user.getAddress());
 
         if (user.getAvatarUrl() != null && !user.getAvatarUrl().isEmpty()) {
             String avatarUrl = user.getAvatarUrl().startsWith("/") ? ApiClient.BASE_URL + user.getAvatarUrl() : user.getAvatarUrl();
@@ -184,7 +180,6 @@ public class EditProfileActivity extends AppCompatActivity {
 
         currentUser.setFullName(fullName);
         currentUser.setPhoneNumber(etPhoneNumber.getText().toString().trim());
-        currentUser.setAddress(etAddress.getText().toString().trim());
 
         showLoading(true);
         Call<UserDto> call = apiService.updateUserProfile("Bearer " + tokenManager.getAccessToken(), currentUser);

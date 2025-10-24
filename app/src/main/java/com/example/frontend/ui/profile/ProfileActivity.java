@@ -2,11 +2,16 @@ package com.example.frontend.ui.profile;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.View;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.frontend.R;
@@ -17,8 +22,10 @@ import com.example.frontend.remote.ApiClient;
 import com.example.frontend.remote.ApiService;
 import com.example.frontend.ui.adapter.ProfileMenuAdapter;
 import com.example.frontend.ui.auth.login.LoginActivity;
+import com.example.frontend.ui.home.CategoriesFragment;
 import com.example.frontend.ui.home.HomeActivity;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.android.material.card.MaterialCardView;
 import com.squareup.picasso.Picasso;
 import java.util.ArrayList;
 import java.util.List;
@@ -52,15 +59,70 @@ public class ProfileActivity extends AppCompatActivity {
         setupBottomNavigation();
         setupRecyclerView();
         loadUserProfile();
+        applyAnimations(); // Thêm animation
     }
 
     private void setupViews() {
+        // Setup Toolbar
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setDisplayShowTitleEnabled(false);
+        }
+
         imgAvatar = findViewById(R.id.imgAvatar);
         tvUserName = findViewById(R.id.tvUserName);
         tvUserEmail = findViewById(R.id.tvUserEmail);
         rvProfileMenu = findViewById(R.id.rvProfileMenu);
         btnLogout = findViewById(R.id.btnLogout);
-        btnLogout.setOnClickListener(v -> logout());
+
+        // Debug: Check if logout button is found
+        if (btnLogout == null) {
+            android.util.Log.e("ProfileActivity", "Logout button not found!");
+        } else {
+            android.util.Log.d("ProfileActivity", "Logout button found and click listener set");
+            // Force button to be visible
+            btnLogout.setVisibility(View.VISIBLE);
+            btnLogout.setAlpha(1.0f);
+            btnLogout.bringToFront();
+        }
+
+        btnLogout.setOnClickListener(v -> {
+            android.util.Log.d("ProfileActivity", "Logout button clicked");
+            logout();
+        });
+    }
+
+    private void applyAnimations() {
+        // Ánh xạ các view cần animation
+        MaterialCardView profileHeaderCard = findViewById(R.id.profileHeaderCard);
+        MaterialCardView statsCard = findViewById(R.id.statsCard);
+        RecyclerView rvProfileMenu = findViewById(R.id.rvProfileMenu);
+        Button btnLogout = findViewById(R.id.btnLogout);
+
+        // Tải animation
+        Animation slideInBottom = AnimationUtils.loadAnimation(this, R.anim.slide_in_bottom);
+
+        // Thiết lập độ trễ cho từng animation để tạo hiệu ứng nối tiếp
+        profileHeaderCard.startAnimation(slideInBottom);
+
+        Animation slideInStats = AnimationUtils.loadAnimation(this, R.anim.slide_in_bottom);
+        slideInStats.setStartOffset(100);
+        statsCard.startAnimation(slideInStats);
+
+        Animation slideInMenu = AnimationUtils.loadAnimation(this, R.anim.slide_in_bottom);
+        slideInMenu.setStartOffset(200);
+        rvProfileMenu.startAnimation(slideInMenu);
+
+        // Animation slideInLogout = AnimationUtils.loadAnimation(this, R.anim.slide_in_bottom);
+        // slideInLogout.setStartOffset(300);
+        // btnLogout.startAnimation(slideInLogout);
+
+        // Debug: Đảm bảo button hiển thị
+        btnLogout.setVisibility(View.VISIBLE);
+        btnLogout.setAlpha(1.0f);
+        android.util.Log.d("ProfileActivity", "Logout button visibility: " + btnLogout.getVisibility());
+        android.util.Log.d("ProfileActivity", "Logout button alpha: " + btnLogout.getAlpha());
     }
 
     private void setupBottomNavigation() {
@@ -71,12 +133,38 @@ public class ProfileActivity extends AppCompatActivity {
             if (itemId == R.id.nav_home) {
                 startActivity(new Intent(this, HomeActivity.class));
                 return true;
+            } else if (itemId == R.id.nav_categories) {
+                // Show Categories fragment
+                CategoriesFragment categoriesFragment = new CategoriesFragment();
+                showFragment(categoriesFragment);
+                return true;
             } else if (itemId == R.id.nav_profile) {
+                // Show profile content
+                showProfileContent();
                 return true;
             }
             Toast.makeText(this, "Tính năng đang phát triển", Toast.LENGTH_SHORT).show();
             return true;
         });
+    }
+
+    private void showFragment(Fragment fragment) {
+        // Hide profile content
+        findViewById(R.id.home_content).setVisibility(View.GONE);
+        // Show fragment container
+        findViewById(R.id.fragment_container).setVisibility(View.VISIBLE);
+
+        // Replace fragment
+        getSupportFragmentManager().beginTransaction()
+                .replace(R.id.fragment_container, fragment)
+                .commit();
+    }
+
+    private void showProfileContent() {
+        // Show profile content
+        findViewById(R.id.home_content).setVisibility(View.VISIBLE);
+        // Hide fragment container
+        findViewById(R.id.fragment_container).setVisibility(View.GONE);
     }
 
     private void setupRecyclerView() {
@@ -88,17 +176,46 @@ public class ProfileActivity extends AppCompatActivity {
         menuItems.add(new ProfileMenuItem("CHANGE_PASSWORD", "Change Password", R.drawable.ic_settings));
         menuItems.add(new ProfileMenuItem("PAYMENT", "Payment Methods", R.drawable.ic_payment));
         menuItems.add(new ProfileMenuItem("ADDRESS", "Delivery Address", R.drawable.ic_address));
+        menuItems.add(new ProfileMenuItem("LOGOUT", "Logout", R.drawable.ic_logout));
         ProfileMenuAdapter adapter = new ProfileMenuAdapter(menuItems, this::handleMenuClick);
         rvProfileMenu.setAdapter(adapter);
     }
 
     private void handleMenuClick(ProfileMenuItem item) {
+        android.util.Log.d("ProfileActivity", "handleMenuClick called: " + item.getLabel());
+        android.util.Log.d("ProfileActivity", "Item ID: " + item.getId());
+        android.util.Log.d("ProfileActivity", "Item icon: " + item.getIconResId());
+
         if ("SETTINGS".equals(item.getId())) {
+            android.util.Log.d("ProfileActivity", "Navigating to EditProfileActivity");
             Intent intent = new Intent(ProfileActivity.this, EditProfileActivity.class);
             startActivity(intent);
+        } else if ("ORDERS".equals(item.getId())) {
+            android.util.Log.d("ProfileActivity", "Navigating to OrderHistoryActivity");
+            try {
+                Intent intent = new Intent(ProfileActivity.this, com.example.frontend.ui.order.OrderHistoryActivity.class);
+                startActivity(intent);
+                android.util.Log.d("ProfileActivity", "OrderHistoryActivity started successfully");
+            } catch (Exception e) {
+                android.util.Log.e("ProfileActivity", "Error starting OrderHistoryActivity: " + e.getMessage(), e);
+                Toast.makeText(this, "Lỗi mở lịch sử đơn hàng: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            }
         } else if ("CHANGE_PASSWORD".equals(item.getId())) {
             Intent intent = new Intent(ProfileActivity.this, ChangePasswordActivity.class);
             startActivity(intent);
+        } else if ("ADDRESS".equals(item.getId())) {
+            Intent intent = new Intent(ProfileActivity.this, DeliveryAddressActivity.class);
+            startActivity(intent);
+        } else if ("LOGOUT".equals(item.getId())) {
+            // Show confirmation dialog
+            new androidx.appcompat.app.AlertDialog.Builder(this)
+                    .setTitle("Đăng xuất")
+                    .setMessage("Bạn có chắc chắn muốn đăng xuất?")
+                    .setPositiveButton("Đăng xuất", (dialog, which) -> {
+                        logout();
+                    })
+                    .setNegativeButton("Hủy", null)
+                    .show();
         } else {
             Toast.makeText(this, item.getLabel() + " - Tính năng đang phát triển", Toast.LENGTH_SHORT).show();
         }

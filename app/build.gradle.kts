@@ -9,7 +9,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.frontend"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
@@ -49,6 +49,10 @@ dependencies {
     // ✅ ĐÃ THÊM: Retrofit để gọi API dễ dàng hơn
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    
+    // Jackson for JSON serialization/deserialization
+    implementation("com.fasterxml.jackson.core:jackson-annotations:2.15.2")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
 
 
     // Coordinator Layout for HomeActivity

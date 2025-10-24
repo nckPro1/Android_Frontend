@@ -31,6 +31,17 @@
         android:usesCleartextTraffic="true">
 
         <activity
+            android:name=".ui.product.ProductDetailActivity"
+            android:exported="false"
+            android:label="Chi tiết sản phẩm"/>
+
+        <activity
+            android:name=".ui.product.ImageViewerActivity"
+            android:exported="false"
+            android:label="Xem ảnh"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"/>
+
+        <activity
             android:name=".ui.auth.login.LoginActivity"
             android:exported="true"
             android:launchMode="singleTask">
@@ -73,6 +84,11 @@
             android:label="Đổi mật khẩu"/>
 
         <activity
+            android:name=".ui.profile.DeliveryAddressActivity"
+            android:exported="false"
+            android:label="Địa chỉ giao hàng"/>
+
+        <activity
             android:name=".ui.auth.forgotpassword.ForgotPasswordActivity"
             android:exported="false"
             android:label="Quên mật khẩu"/>
@@ -81,6 +97,37 @@
             android:name=".ui.auth.forgotpassword.ResetPasswordActivity"
             android:exported="false"
             android:label="Đặt lại mật khẩu"/>
+
+        <!-- Order Flow Activities -->
+        <activity
+            android:name=".ui.cart.CartActivity"
+            android:exported="false"
+            android:label="Giỏ hàng"/>
+
+        <activity
+            android:name=".ui.checkout.CheckoutActivity"
+            android:exported="false"
+            android:label="Thanh toán"/>
+
+        <activity
+            android:name=".ui.order.OrderHistoryActivity"
+            android:exported="false"
+            android:label="Lịch sử đơn hàng"/>
+
+        <activity
+            android:name=".ui.order.OrderDetailActivity"
+            android:exported="false"
+            android:label="Chi tiết đơn hàng"/>
+
+        <activity
+            android:name=".ui.order.OrderTrackingActivity"
+            android:exported="false"
+            android:label="Theo dõi đơn hàng"/>
+
+        <activity
+            android:name=".ui.order.OrderSuccessActivity"
+            android:exported="false"
+            android:label="Đặt hàng thành công"/>
 
         <!-- File Provider for sharing files -->
         <provider
