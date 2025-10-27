@@ -70,25 +70,25 @@ public class OrderHistoryAdapter extends RecyclerView.Adapter<OrderHistoryAdapte
 
         public void bind(Order order) {
             textViewOrderNumber.setText(order.getOrderNumber());
-
+            
             // Order date
             if (order.getCreatedAt() != null) {
                 textViewOrderDate.setText("Ngày: " + order.getCreatedAt().toString().substring(0, 10));
             } else {
                 textViewOrderDate.setText("Ngày: --");
             }
-
+            
             // Order status
             textViewOrderStatus.setText(getOrderStatusDisplay(order.getOrderStatus()));
             textViewOrderStatus.setTextColor(getOrderStatusColor(order.getOrderStatus()));
-
+            
             // Payment status
             textViewPaymentStatus.setText(getPaymentStatusDisplay(order.getPaymentStatus()));
             textViewPaymentStatus.setTextColor(getPaymentStatusColor(order.getPaymentStatus()));
-
+            
             // Total amount
             textViewTotalAmount.setText(PriceFormatter.format(order.getFinalAmount()));
-
+            
             // Item count
             int itemCount = order.getOrderItems() != null ? order.getOrderItems().size() : 0;
             textViewItemCount.setText(itemCount + " sản phẩm");
@@ -103,7 +103,7 @@ public class OrderHistoryAdapter extends RecyclerView.Adapter<OrderHistoryAdapte
 
         private String getOrderStatusDisplay(Order.OrderStatus status) {
             if (status == null) return "Không xác định";
-
+            
             switch (status) {
                 case PENDING: return "Chờ xử lý";
                 case CONFIRMED: return "Đã nhận";
@@ -115,7 +115,7 @@ public class OrderHistoryAdapter extends RecyclerView.Adapter<OrderHistoryAdapte
 
         private int getOrderStatusColor(Order.OrderStatus status) {
             if (status == null) return itemView.getContext().getColor(R.color.text_secondary);
-
+            
             switch (status) {
                 case PENDING: return itemView.getContext().getColor(R.color.warning);
                 case CONFIRMED: return itemView.getContext().getColor(R.color.primary);
@@ -127,7 +127,7 @@ public class OrderHistoryAdapter extends RecyclerView.Adapter<OrderHistoryAdapte
 
         private String getPaymentStatusDisplay(Order.PaymentStatus status) {
             if (status == null) return "Không xác định";
-
+            
             switch (status) {
                 case PENDING: return "Chờ thanh toán";
                 case COMPLETED: return "Đã thanh toán";
@@ -139,7 +139,7 @@ public class OrderHistoryAdapter extends RecyclerView.Adapter<OrderHistoryAdapte
 
         private int getPaymentStatusColor(Order.PaymentStatus status) {
             if (status == null) return itemView.getContext().getColor(R.color.text_secondary);
-
+            
             switch (status) {
                 case PENDING: return itemView.getContext().getColor(R.color.warning);
                 case COMPLETED: return itemView.getContext().getColor(R.color.success);

@@ -62,9 +62,11 @@ public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductV
         private TextView tvProductName;
         private TextView tvProductDescription;
         private TextView tvProductPrice;
+        private TextView tvOriginalPrice;
         private TextView tvProductCategory;
         private TextView tvPreparationTime;
         private View vFeaturedBadge;
+        private TextView tvSaleBadge;
 
         public ProductViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -72,9 +74,11 @@ public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductV
             tvProductName = itemView.findViewById(R.id.tvProductName);
             tvProductDescription = itemView.findViewById(R.id.tvProductDescription);
             tvProductPrice = itemView.findViewById(R.id.tvProductPrice);
+            tvOriginalPrice = itemView.findViewById(R.id.tvOriginalPrice);
             tvProductCategory = itemView.findViewById(R.id.tvProductCategory);
             tvPreparationTime = itemView.findViewById(R.id.tvPreparationTime);
             vFeaturedBadge = itemView.findViewById(R.id.vFeaturedBadge);
+            tvSaleBadge = itemView.findViewById(R.id.tvSaleBadge);
 
             itemView.setOnClickListener(v -> {
                 int position = getAdapterPosition();
@@ -94,7 +98,36 @@ public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductV
         public void bind(Product product) {
             tvProductName.setText(product.getName());
             tvProductDescription.setText(product.getDescription());
-            tvProductPrice.setText(product.getFormattedPrice());
+
+            // Handle sale price display
+            if (product.isOnSale() && product.isSaleActive()) {
+                // Show sale badge
+                tvSaleBadge.setVisibility(View.VISIBLE);
+
+                // Show original price (strikethrough)
+                tvOriginalPrice.setText(product.getFormattedPrice());
+                tvOriginalPrice.setVisibility(View.VISIBLE);
+
+                // Show sale price in green
+                tvProductPrice.setText(product.getFormattedCurrentPrice());
+                tvProductPrice.setTextColor(itemView.getContext().getColor(android.R.color.holo_green_dark));
+
+                // Show sale percentage if available
+                if (product.getSalePercentage() != null) {
+                    tvSaleBadge.setText("-" + product.getSalePercentage() + "%");
+                } else {
+                    tvSaleBadge.setText("SALE");
+                }
+            } else {
+                // Hide sale badge and original price
+                tvSaleBadge.setVisibility(View.GONE);
+                tvOriginalPrice.setVisibility(View.GONE);
+
+                // Show regular price
+                tvProductPrice.setText(product.getFormattedPrice());
+                tvProductPrice.setTextColor(itemView.getContext().getColor(android.R.color.black));
+            }
+
             tvPreparationTime.setText(product.getPreparationTime() + " phút");
 
             // Category

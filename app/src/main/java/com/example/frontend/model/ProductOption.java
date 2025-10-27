@@ -6,31 +6,31 @@ import java.math.BigDecimal;
 public class ProductOption {
     @SerializedName("optionId")
     private Long optionId;
-
+    
     @SerializedName("productId")
     private Long productId;
-
+    
     @SerializedName("optionName")
     private String optionName;
-
+    
     @SerializedName("optionType")
     private String optionType;
-
+    
     @SerializedName("price")
-    private BigDecimal extraPrice;
-
+    private BigDecimal price;
+    
     @SerializedName("isRequired")
     private Boolean isRequired;
-
+    
     @SerializedName("isActive")
     private Boolean isActive;
-
+    
     @SerializedName("maxSelections")
     private Integer maxSelections;
-
+    
     @SerializedName("createdAt")
     private String createdAt;
-
+    
     @SerializedName("updatedAt")
     private String updatedAt;
 
@@ -38,12 +38,12 @@ public class ProductOption {
     public ProductOption() {}
 
     public ProductOption(Long optionId, Long productId, String optionName, String optionType,
-                         BigDecimal extraPrice, Boolean isRequired, Boolean isActive, Integer maxSelections) {
+                         BigDecimal price, Boolean isRequired, Boolean isActive, Integer maxSelections) {
         this.optionId = optionId;
         this.productId = productId;
         this.optionName = optionName;
         this.optionType = optionType;
-        this.extraPrice = extraPrice;
+        this.price = price;
         this.isRequired = isRequired;
         this.isActive = isActive;
         this.maxSelections = maxSelections;
@@ -82,12 +82,12 @@ public class ProductOption {
         this.optionType = optionType;
     }
 
-    public BigDecimal getExtraPrice() {
-        return extraPrice;
+    public BigDecimal getPrice() {
+        return price;
     }
 
-    public void setExtraPrice(BigDecimal extraPrice) {
-        this.extraPrice = extraPrice;
+    public void setPrice(BigDecimal price) {
+        this.price = price;
     }
 
     public Boolean getIsRequired() {
@@ -136,23 +136,23 @@ public class ProductOption {
     }
 
     public boolean isPaid() {
-        return extraPrice != null && extraPrice.compareTo(BigDecimal.ZERO) > 0;
+        return price != null && price.compareTo(BigDecimal.ZERO) > 0;
     }
 
     public String getFormattedPrice() {
-        android.util.Log.d("ProductOption", "getFormattedPrice: extraPrice = " + extraPrice);
-
-        if (extraPrice == null) {
-            android.util.Log.d("ProductOption", "getFormattedPrice: extraPrice is null, returning 'Miễn phí'");
+        android.util.Log.d("ProductOption", "getFormattedPrice: price = " + price);
+        
+        if (price == null) {
+            android.util.Log.d("ProductOption", "getFormattedPrice: price is null, returning 'Miễn phí'");
             return "Miễn phí";
         }
-
-        if (extraPrice.compareTo(BigDecimal.ZERO) == 0) {
-            android.util.Log.d("ProductOption", "getFormattedPrice: extraPrice is 0, returning 'Miễn phí'");
+        
+        if (price.compareTo(BigDecimal.ZERO) == 0) {
+            android.util.Log.d("ProductOption", "getFormattedPrice: price is 0, returning 'Miễn phí'");
             return "Miễn phí";
         }
-
-        String formatted = "+" + extraPrice + "đ";
+        
+        String formatted = "+" + price + "đ";
         android.util.Log.d("ProductOption", "getFormattedPrice: returning '" + formatted + "'");
         return formatted;
     }
@@ -164,7 +164,7 @@ public class ProductOption {
                 ", productId=" + productId +
                 ", optionName='" + optionName + '\'' +
                 ", optionType='" + optionType + '\'' +
-                ", extraPrice=" + extraPrice +
+                ", price=" + price +
                 ", isRequired=" + isRequired +
                 ", isActive=" + isActive +
                 ", maxSelections=" + maxSelections +

@@ -2,6 +2,8 @@ package com.example.frontend.ui.cart;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -17,7 +19,6 @@ import com.example.frontend.model.CartItem;
 import com.example.frontend.model.User;
 import com.example.frontend.ui.adapter.CartAdapter;
 import com.example.frontend.ui.checkout.CheckoutActivity;
-import com.example.frontend.ui.profile.DeliveryAddressActivity;
 import com.example.frontend.util.CartManager;
 import com.example.frontend.util.UserManager;
 import com.example.frontend.remote.ApiClient;
@@ -57,6 +58,7 @@ public class CartActivity extends AppCompatActivity {
     private BigDecimal total = BigDecimal.ZERO;
 
     private final NumberFormat vnd = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
+    private final Handler handler = new Handler(Looper.getMainLooper());
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -102,14 +104,14 @@ public class CartActivity extends AppCompatActivity {
         if (buttonContinueShopping != null) {
             buttonContinueShopping.setOnClickListener(v -> finish());
         }
-        
+
         // Delivery address click listener
         if (textViewDeliveryAddress != null) {
             textViewDeliveryAddress.setOnClickListener(v -> {
                 User user = userManager.getCurrentUser();
                 if (user == null || user.getAddress() == null || user.getAddress().trim().isEmpty()) {
-                    // Navigate to delivery address activity
-                    Intent intent = new Intent(this, DeliveryAddressActivity.class);
+                    // Navigate to checkout activity
+                    Intent intent = new Intent(this, CheckoutActivity.class);
                     startActivity(intent);
                 }
             });
@@ -132,45 +134,64 @@ public class CartActivity extends AppCompatActivity {
         cartAdapter = new CartAdapter(cartItems, new CartAdapter.OnCartItemChangeListener() {
             @Override
             public void onQuantityChanged(int position, int newQuantity) {
-                if (position < 0 || position >= cartItems.size()) return;
-                CartItem item = cartItems.get(position);
+                try {
+                    android.util.Log.d("CartActivity", "onQuantityChanged called - position: " + position + ", newQuantity: " + newQuantity);
 
-                // Cập nhật nguồn dữ liệu chính
-                cartManager.updateQuantity(item.getProductId(), newQuantity);
+                    if (position < 0 || position >= cartItems.size()) {
+                        android.util.Log.w("CartActivity", "Invalid position for quantity change: " + position);
+                        return;
+                    }
 
-                // Đồng bộ lại list với CartManager để tránh lệch tham chiếu
-                List<CartItem> latest = cartManager.getCartItems();
-                cartItems.clear();
-                if (latest != null) cartItems.addAll(latest);
+                    CartItem item = cartItems.get(position);
+                    if (item == null) {
+                        android.util.Log.w("CartActivity", "CartItem is null at position: " + position);
+                        return;
+                    }
 
-                // Nếu quantity về 0, có thể đã bị remove trong CartManager
-                if (newQuantity <= 0 && position < cartItems.size()) {
-                    cartAdapter.notifyItemRemoved(position);
-                } else {
-                    cartAdapter.notifyItemChanged(position);
+                    android.util.Log.d("CartActivity", "Updating quantity for: " + item.getProductName() + " at position: " + position + " to: " + newQuantity);
+
+                    // Cập nhật trực tiếp trong cartItems
+                    item.setQuantity(newQuantity);
+                    cartManager.saveCartItems(cartItems);
+
+                    // Delay refresh để đảm bảo CartManager đã save xong
+                    handler.postDelayed(() -> refreshCartData(), 100);
+
+                } catch (Exception e) {
+                    android.util.Log.e("CartActivity", "Error in onQuantityChanged: " + e.getMessage(), e);
+                    Toast.makeText(CartActivity.this, "Lỗi cập nhật số lượng: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 }
-
-                updateCartSummary();
-                toggleEmptyState(cartItems.isEmpty());
             }
 
             @Override
             public void onItemRemoved(int position) {
-                if (position < 0 || position >= cartItems.size()) return;
-                CartItem item = cartItems.get(position);
+                try {
+                    android.util.Log.d("CartActivity", "onItemRemoved called - position: " + position);
 
-                // Cập nhật nguồn dữ liệu trước
-                cartManager.removeFromCart(item.getProductId());
+                    if (position < 0 || position >= cartItems.size()) {
+                        android.util.Log.w("CartActivity", "Invalid position for removal: " + position);
+                        return;
+                    }
 
-                // Sync lại list từ CartManager
-                List<CartItem> latest = cartManager.getCartItems();
-                cartItems.clear();
-                if (latest != null) cartItems.addAll(latest);
+                    CartItem item = cartItems.get(position);
+                    if (item == null) {
+                        android.util.Log.w("CartActivity", "CartItem is null at position: " + position);
+                        return;
+                    }
 
-                cartAdapter.notifyItemRemoved(position);
+                    android.util.Log.d("CartActivity", "Removing item: " + item.getProductName() + " at position: " + position);
 
-                updateCartSummary();
-                toggleEmptyState(cartItems.isEmpty());
+                    // Xóa trực tiếp từ cartItems
+                    cartItems.remove(position);
+                    cartManager.saveCartItems(cartItems);
+
+                    // Reload toàn bộ data và refresh adapter
+                    refreshCartData();
+
+                } catch (Exception e) {
+                    android.util.Log.e("CartActivity", "Error in onItemRemoved: " + e.getMessage(), e);
+                    Toast.makeText(CartActivity.this, "Lỗi xóa sản phẩm: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                }
             }
         });
 
@@ -183,14 +204,15 @@ public class CartActivity extends AppCompatActivity {
 
         int totalItemsCount = 0; // nếu muốn hiển thị tổng số món (số lượng), thay vì số dòng
         for (CartItem item : cartItems) {
-            BigDecimal unitPrice = item.getUnitPrice() != null ? item.getUnitPrice() : BigDecimal.ZERO;
+            // Use current price (sale price if on sale, otherwise regular price)
+            BigDecimal unitPrice = item.getCurrentPrice() != null ? item.getCurrentPrice() : BigDecimal.ZERO;
             BigDecimal itemTotal = unitPrice.multiply(BigDecimal.valueOf(item.getQuantity()));
 
             // cộng thêm extra của options
             if (item.getSelectedOptions() != null) {
                 for (var option : item.getSelectedOptions()) {
-                    if (option.getExtraPrice() != null) {
-                        itemTotal = itemTotal.add(option.getExtraPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
+                    if (option.getPrice() != null) {
+                        itemTotal = itemTotal.add(option.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
                     }
                 }
             }
@@ -199,17 +221,10 @@ public class CartActivity extends AppCompatActivity {
             totalItemsCount += item.getQuantity();
         }
 
-        // Shipping: miễn phí nếu >= 200k, nếu không thì dùng giá mặc định từ admin
-        if (subtotal.compareTo(new BigDecimal("200000")) >= 0) {
-            shippingFee = BigDecimal.ZERO;
-        } else {
-            // Sử dụng giá ship mặc định từ admin (15k-20k)
-            // Có thể lấy từ API hoặc SharedPreferences
-            shippingFee = getDefaultShippingFee();
-        }
-
+        // Cart không hiển thị phí ship, chỉ hiển thị subtotal
+        shippingFee = BigDecimal.ZERO;
         discount = BigDecimal.ZERO;
-        total = subtotal.add(shippingFee).subtract(discount);
+        total = subtotal; // Chỉ tính subtotal, không cộng shipping fee
 
         // Update UI
         if (textViewSubtotal != null) textViewSubtotal.setText(formatPrice(subtotal));
@@ -250,6 +265,110 @@ public class CartActivity extends AppCompatActivity {
         startActivity(intent);
     }
 
+    private void refreshCartData() {
+        try {
+            android.util.Log.d("CartActivity", "Refreshing cart data...");
+
+            // Reload data từ CartManager
+            List<CartItem> latest = cartManager.getCartItems();
+            android.util.Log.d("CartActivity", "Latest cart from CartManager has " + (latest != null ? latest.size() : 0) + " items");
+
+            if (latest != null) {
+                for (int i = 0; i < latest.size(); i++) {
+                    CartItem item = latest.get(i);
+                    android.util.Log.d("CartActivity", "Item " + i + ": " + item.getProductName() + " (qty: " + item.getQuantity() + ")");
+                }
+            }
+
+            cartItems.clear();
+            if (latest != null) {
+                cartItems.addAll(latest);
+            }
+
+            android.util.Log.d("CartActivity", "Cart data refreshed. New size: " + cartItems.size());
+
+            // Refresh adapter - recreate to avoid cached data issues
+            if (cartAdapter != null) {
+                // Create new adapter with fresh data
+                cartAdapter = new CartAdapter(cartItems, new CartAdapter.OnCartItemChangeListener() {
+                    @Override
+                    public void onQuantityChanged(int position, int newQuantity) {
+                        try {
+                            android.util.Log.d("CartActivity", "onQuantityChanged called - position: " + position + ", newQuantity: " + newQuantity);
+
+                            if (position < 0 || position >= cartItems.size()) {
+                                android.util.Log.w("CartActivity", "Invalid position for quantity change: " + position);
+                                return;
+                            }
+
+                            CartItem item = cartItems.get(position);
+                            if (item == null) {
+                                android.util.Log.w("CartActivity", "CartItem is null at position: " + position);
+                                return;
+                            }
+
+                            android.util.Log.d("CartActivity", "Updating quantity for: " + item.getProductName() + " at position: " + position + " to: " + newQuantity);
+
+                            // Cập nhật trực tiếp trong cartItems
+                            item.setQuantity(newQuantity);
+                            cartManager.saveCartItems(cartItems);
+
+                            // Delay refresh để đảm bảo CartManager đã save xong
+                            handler.postDelayed(() -> refreshCartData(), 100);
+
+                        } catch (Exception e) {
+                            android.util.Log.e("CartActivity", "Error in onQuantityChanged: " + e.getMessage(), e);
+                            Toast.makeText(CartActivity.this, "Lỗi cập nhật số lượng: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        }
+                    }
+
+                    @Override
+                    public void onItemRemoved(int position) {
+                        try {
+                            android.util.Log.d("CartActivity", "onItemRemoved called - position: " + position);
+
+                            if (position < 0 || position >= cartItems.size()) {
+                                android.util.Log.w("CartActivity", "Invalid position for removal: " + position);
+                                return;
+                            }
+
+                            CartItem item = cartItems.get(position);
+                            if (item == null) {
+                                android.util.Log.w("CartActivity", "CartItem is null at position: " + position);
+                                return;
+                            }
+
+                            android.util.Log.d("CartActivity", "Removing item: " + item.getProductName() + " at position: " + position);
+
+                            // Xóa trực tiếp từ cartItems
+                            cartItems.remove(position);
+                            cartManager.saveCartItems(cartItems);
+
+                            // Delay refresh để đảm bảo CartManager đã save xong
+                            handler.postDelayed(() -> refreshCartData(), 100);
+
+                        } catch (Exception e) {
+                            android.util.Log.e("CartActivity", "Error in onItemRemoved: " + e.getMessage(), e);
+                            Toast.makeText(CartActivity.this, "Lỗi xóa sản phẩm: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
+
+                // Set new adapter
+                if (recyclerViewCart != null) {
+                    recyclerViewCart.setAdapter(cartAdapter);
+                }
+            }
+
+            // Update UI
+            updateCartSummary();
+            toggleEmptyState(cartItems.isEmpty());
+
+        } catch (Exception e) {
+            android.util.Log.e("CartActivity", "Error refreshing cart data: " + e.getMessage(), e);
+        }
+    }
+
     private void updateDeliveryAddressDisplay() {
         User user = userManager.getCurrentUser();
         if (user != null && user.getAddress() != null && !user.getAddress().trim().isEmpty()) {
@@ -263,12 +382,6 @@ public class CartActivity extends AppCompatActivity {
         }
     }
 
-    private BigDecimal getDefaultShippingFee() {
-        // Giá ship mặc định từ admin (15k-20k)
-        // Có thể lấy từ API hoặc SharedPreferences
-        // Tạm thời dùng giá cố định 15k
-        return new BigDecimal("15000");
-    }
 
     private String formatPrice(BigDecimal price) {
         if (price == null) return vnd.format(0);
@@ -287,7 +400,7 @@ public class CartActivity extends AppCompatActivity {
             updateCartSummary();
             toggleEmptyState(cartItems.isEmpty());
         }
-        
+
         // Refresh delivery address display when returning from profile
         updateDeliveryAddressDisplay();
     }

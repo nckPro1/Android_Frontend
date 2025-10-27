@@ -38,8 +38,17 @@ public class CartAdapter extends RecyclerView.Adapter<CartAdapter.CartViewHolder
 
     @Override
     public long getItemId(int position) {
-        // Nếu CartItem có id riêng thì trả về id đó. Ở đây tạm dùng hash.
-        return cartItems.get(position).hashCode();
+        // Sử dụng productId + hashCode của options để tạo stable ID
+        if (position < 0 || position >= cartItems.size()) return RecyclerView.NO_ID;
+        CartItem item = cartItems.get(position);
+        if (item == null) return RecyclerView.NO_ID;
+
+        // Tạo ID ổn định dựa trên productId và options
+        long baseId = item.getProductId() != null ? item.getProductId() : 0;
+        if (item.getSelectedOptions() != null && !item.getSelectedOptions().isEmpty()) {
+            baseId = baseId * 1000 + item.getSelectedOptions().hashCode();
+        }
+        return baseId;
     }
 
     @NonNull
@@ -126,8 +135,8 @@ public class CartAdapter extends RecyclerView.Adapter<CartAdapter.CartViewHolder
                 for (ProductOption option : item.getSelectedOptions()) {
                     if (optionsText.length() > 0) optionsText.append(", ");
                     optionsText.append(option.getOptionName());
-                    if (option.getExtraPrice() != null && option.getExtraPrice().compareTo(BigDecimal.ZERO) > 0) {
-                        optionsText.append(" (+").append(PriceFormatter.format(option.getExtraPrice())).append(")");
+                    if (option.getPrice() != null && option.getPrice().compareTo(BigDecimal.ZERO) > 0) {
+                        optionsText.append(" (+").append(PriceFormatter.format(option.getPrice())).append(")");
                     }
                 }
                 textViewOptions.setText(optionsText.toString());
@@ -138,14 +147,14 @@ public class CartAdapter extends RecyclerView.Adapter<CartAdapter.CartViewHolder
 
             // Số lượng & giá
             textViewQuantity.setText(String.valueOf(item.getQuantity()));
-            textViewUnitPrice.setText(PriceFormatter.format(item.getUnitPrice()));
+            textViewUnitPrice.setText(PriceFormatter.format(item.getCurrentPrice()));
 
-            BigDecimal totalPrice = (item.getUnitPrice() != null ? item.getUnitPrice() : BigDecimal.ZERO)
+            BigDecimal totalPrice = (item.getCurrentPrice() != null ? item.getCurrentPrice() : BigDecimal.ZERO)
                     .multiply(BigDecimal.valueOf(item.getQuantity()));
             if (item.getSelectedOptions() != null) {
                 for (ProductOption option : item.getSelectedOptions()) {
-                    if (option.getExtraPrice() != null) {
-                        totalPrice = totalPrice.add(option.getExtraPrice()
+                    if (option.getPrice() != null) {
+                        totalPrice = totalPrice.add(option.getPrice()
                                 .multiply(BigDecimal.valueOf(item.getQuantity())));
                     }
                 }
@@ -155,10 +164,19 @@ public class CartAdapter extends RecyclerView.Adapter<CartAdapter.CartViewHolder
             // Nút trừ
             buttonDecrease.setOnClickListener(v -> {
                 int pos = getBindingAdapterPosition();
-                if (pos == RecyclerView.NO_POSITION || pos < 0 || pos >= cartItems.size()) return;
+                android.util.Log.d("CartAdapter", "Decrease button clicked - binding position: " + pos);
+                if (pos == RecyclerView.NO_POSITION || pos < 0 || pos >= cartItems.size()) {
+                    android.util.Log.w("CartAdapter", "Invalid binding position for decrease: " + pos);
+                    return;
+                }
                 CartItem cur = cartItems.get(pos);
+                if (cur == null) {
+                    android.util.Log.w("CartAdapter", "CartItem is null at binding position: " + pos);
+                    return;
+                }
                 int newQuantity = cur.getQuantity() - 1;
                 if (newQuantity >= 0) {
+                    android.util.Log.d("CartAdapter", "Decreasing quantity for: " + cur.getProductName() + " (pos: " + pos + ") to: " + newQuantity);
                     listener.onQuantityChanged(pos, newQuantity);
                 }
             });
@@ -166,16 +184,35 @@ public class CartAdapter extends RecyclerView.Adapter<CartAdapter.CartViewHolder
             // Nút cộng
             buttonIncrease.setOnClickListener(v -> {
                 int pos = getBindingAdapterPosition();
-                if (pos == RecyclerView.NO_POSITION || pos < 0 || pos >= cartItems.size()) return;
+                android.util.Log.d("CartAdapter", "Increase button clicked - binding position: " + pos);
+                if (pos == RecyclerView.NO_POSITION || pos < 0 || pos >= cartItems.size()) {
+                    android.util.Log.w("CartAdapter", "Invalid binding position for increase: " + pos);
+                    return;
+                }
                 CartItem cur = cartItems.get(pos);
+                if (cur == null) {
+                    android.util.Log.w("CartAdapter", "CartItem is null at binding position: " + pos);
+                    return;
+                }
                 int newQuantity = cur.getQuantity() + 1;
+                android.util.Log.d("CartAdapter", "Increasing quantity for: " + cur.getProductName() + " (pos: " + pos + ") to: " + newQuantity);
                 listener.onQuantityChanged(pos, newQuantity);
             });
 
             // Nút xoá
             buttonRemove.setOnClickListener(v -> {
                 int pos = getBindingAdapterPosition();
-                if (pos == RecyclerView.NO_POSITION || pos < 0 || pos >= cartItems.size()) return;
+                android.util.Log.d("CartAdapter", "Remove button clicked - binding position: " + pos);
+                if (pos == RecyclerView.NO_POSITION || pos < 0 || pos >= cartItems.size()) {
+                    android.util.Log.w("CartAdapter", "Invalid binding position for remove: " + pos);
+                    return;
+                }
+                CartItem cur = cartItems.get(pos);
+                if (cur == null) {
+                    android.util.Log.w("CartAdapter", "CartItem is null at binding position: " + pos);
+                    return;
+                }
+                android.util.Log.d("CartAdapter", "Removing item: " + cur.getProductName() + " (pos: " + pos + ")");
                 listener.onItemRemoved(pos);
             });
         }

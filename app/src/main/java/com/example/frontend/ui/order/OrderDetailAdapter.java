@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.frontend.R;
 import com.example.frontend.model.OrderItem;
 import com.example.frontend.util.PriceFormatter;
+import com.example.frontend.util.ImageUrlBuilder;
 import com.squareup.picasso.Picasso;
 
 import java.util.List;
@@ -62,7 +63,18 @@ public class OrderDetailAdapter extends RecyclerView.Adapter<OrderDetailAdapter.
         }
 
         public void bind(OrderItem orderItem) {
-            textViewProductName.setText(orderItem.getProductName());
+            // Product name with options
+            String productName = orderItem.getProductName();
+            if (orderItem.getSelectedOptions() != null && !orderItem.getSelectedOptions().isEmpty()) {
+                StringBuilder optionsText = new StringBuilder();
+                for (var option : orderItem.getSelectedOptions()) {
+                    if (optionsText.length() > 0) optionsText.append(", ");
+                    optionsText.append(option.getOptionName());
+                }
+                productName += " (" + optionsText.toString() + ")";
+            }
+            textViewProductName.setText(productName);
+            
             textViewProductPrice.setText(PriceFormatter.format(orderItem.getProductPrice()));
             textViewQuantity.setText("x" + orderItem.getQuantity());
             textViewSubtotal.setText(PriceFormatter.format(orderItem.getSubtotal()));
@@ -75,15 +87,19 @@ public class OrderDetailAdapter extends RecyclerView.Adapter<OrderDetailAdapter.
                 textViewSpecialInstructions.setVisibility(View.GONE);
             }
 
-            // Product image
-            if (orderItem.getProductImage() != null && !orderItem.getProductImage().isEmpty()) {
+            // Product image with proper URL building
+            String imageUrl = orderItem.getProductImage();
+            if (imageUrl != null && !imageUrl.trim().isEmpty()) {
+                String fullImageUrl = ImageUrlBuilder.buildFullUrl(imageUrl);
                 Picasso.get()
-                        .load(orderItem.getProductImage())
-                        .placeholder(R.drawable.placeholder_image)
-                        .error(R.drawable.placeholder_image)
+                        .load(fullImageUrl)
+                        .placeholder(R.drawable.ic_food_placeholder)
+                        .error(R.drawable.ic_food_placeholder)
+                        .fit()
+                        .centerCrop()
                         .into(imageViewProduct);
             } else {
-                imageViewProduct.setImageResource(R.drawable.placeholder_image);
+                imageViewProduct.setImageResource(R.drawable.ic_food_placeholder);
             }
         }
     }

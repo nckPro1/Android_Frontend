@@ -91,8 +91,8 @@ public class CheckoutItemAdapter extends RecyclerView.Adapter<CheckoutItemAdapte
                         optionsText.append(", ");
                     }
                     optionsText.append(option.getOptionName());
-                    if (option.getExtraPrice() != null && option.getExtraPrice().compareTo(BigDecimal.ZERO) > 0) {
-                        optionsText.append(" (+").append(PriceFormatter.format(option.getExtraPrice())).append(")");
+                    if (option.getPrice() != null && option.getPrice().compareTo(BigDecimal.ZERO) > 0) {
+                        optionsText.append(" (+").append(PriceFormatter.format(option.getPrice())).append(")");
                     }
                 }
                 textViewOptions.setText(optionsText.toString());
@@ -105,7 +105,7 @@ public class CheckoutItemAdapter extends RecyclerView.Adapter<CheckoutItemAdapte
             textViewQuantity.setText("x" + item.getQuantity());
 
             // Total price
-            BigDecimal unitPrice = item.getUnitPrice();
+            BigDecimal unitPrice = item.getCurrentPrice();
             if (unitPrice == null) {
                 unitPrice = BigDecimal.ZERO;
             }
@@ -114,8 +114,8 @@ public class CheckoutItemAdapter extends RecyclerView.Adapter<CheckoutItemAdapte
             // Add option prices
             if (item.getSelectedOptions() != null) {
                 for (ProductOption option : item.getSelectedOptions()) {
-                    if (option.getExtraPrice() != null) {
-                        totalPrice = totalPrice.add(option.getExtraPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
+                    if (option.getPrice() != null) {
+                        totalPrice = totalPrice.add(option.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
                     }
                 }
             }

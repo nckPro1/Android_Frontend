@@ -122,16 +122,71 @@
                         android:layout_marginBottom="8dp"
                         android:visibility="gone" />
 
-                    <!-- Price -->
+                    <!-- Sale Badge -->
                     <TextView
-                        android:id="@+id/tvProductPrice"
+                        android:id="@+id/tvSaleBadge"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="0 VNĐ"
-                        android:textColor="@color/primary_color"
-                        android:textSize="20sp"
+                        android:text="SALE"
+                        android:textColor="@android:color/white"
+                        android:textSize="12sp"
                         android:textStyle="bold"
-                        android:layout_marginBottom="12dp" />
+                        android:background="@drawable/sale_badge"
+                        android:padding="6dp"
+                        android:layout_marginBottom="8dp"
+                        android:visibility="gone" />
+
+                    <!-- Price Section -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginBottom="12dp">
+
+                        <!-- Original Price (when on sale) -->
+                        <TextView
+                            android:id="@+id/tvOriginalPrice"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="0 VNĐ"
+                            android:textColor="@android:color/darker_gray"
+                            android:textSize="16sp"
+                            android:layout_marginBottom="4dp"
+                            android:visibility="gone" />
+
+                        <!-- Current Price -->
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
+
+                            <TextView
+                                android:id="@+id/tvProductPrice"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="0 VNĐ"
+                                android:textColor="@color/primary_color"
+                                android:textSize="20sp"
+                                android:textStyle="bold" />
+
+                            <!-- Discount Percentage -->
+                            <TextView
+                                android:id="@+id/tvDiscountPercent"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="-20%"
+                                android:textColor="@color/sale_color"
+                                android:textSize="14sp"
+                                android:textStyle="bold"
+                                android:layout_marginStart="8dp"
+                                android:background="@drawable/discount_badge"
+                                android:padding="4dp"
+                                android:visibility="gone" />
+
+                        </LinearLayout>
+
+                    </LinearLayout>
 
                     <!-- Description -->
                     <TextView
@@ -260,7 +315,7 @@
                         android:id="@+id/rvProductOptions"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:visibility="gone"
+                        android:visibility="visible"
                         tools:visibility="visible"
                         tools:listitem="@layout/item_product_option" />
 

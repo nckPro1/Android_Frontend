@@ -193,6 +193,98 @@
 
         </LinearLayout>
 
+        <!-- Coupon Code -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Mã giảm giá"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary"
+                android:layout_marginBottom="8dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <EditText
+                    android:id="@+id/editTextCouponCode"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:hint="Nhập mã giảm giá..."
+                    android:textSize="14sp"
+                    android:textColor="@color/text_primary"
+                    android:background="@drawable/background_input"
+                    android:padding="12dp"
+                    android:minHeight="48dp"
+                    android:layout_marginEnd="8dp"
+                    android:inputType="textCapCharacters" />
+
+                <Button
+                    android:id="@+id/buttonApplyCoupon"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:text="Áp dụng"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="@android:color/white"
+                    android:background="@drawable/button_secondary"
+                    android:paddingHorizontal="16dp" />
+
+            </LinearLayout>
+
+            <!-- Applied Coupon Info -->
+            <LinearLayout
+                android:id="@+id/layoutAppliedCoupon"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:background="@drawable/coupon_applied_background"
+                android:padding="12dp"
+                android:layout_marginTop="8dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Mã giảm giá đã áp dụng"
+                    android:textSize="14sp"
+                    android:textColor="@color/success_color"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/textViewCouponDiscount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="-0 VNĐ"
+                    android:textSize="14sp"
+                    android:textColor="@color/success_color"
+                    android:textStyle="bold" />
+
+                <ImageView
+                    android:id="@+id/imageViewRemoveCoupon"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_marginStart="8dp"
+                    android:src="@drawable/ic_close"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:padding="2dp"
+                    android:tint="@color/text_secondary" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
         <!-- Order Summary -->
         <LinearLayout
             android:layout_width="match_parent"

@@ -15,8 +15,7 @@ import com.example.frontend.model.RegisterRequest; // Thêm import này
 import com.example.frontend.model.ResendOTPRequest;
 import com.example.frontend.model.ResetPasswordRequest;
 import com.example.frontend.model.Order;
-import com.example.frontend.model.ShippingCalculationResponse;
-import com.example.frontend.model.ShippingCalculationRequest;
+import com.example.frontend.model.ShippingFeeInfo;
 import com.example.frontend.model.StoreInfo;
 import com.example.frontend.model.UserDto;
 
@@ -118,8 +117,32 @@ public interface ApiService {
     Call<ApiResponse> searchProducts(@Query("query") String query);
 
     // ✅ Lấy product options
-    @GET("/admin/products/{productId}/options")
+    @GET("/api/products/{productId}/options")
     Call<ApiResponse> getProductOptions(@Path("productId") Long productId);
+
+    // ===============================
+    // SALE & COUPON ENDPOINTS
+    // ===============================
+
+    // ✅ Lấy tất cả sales
+    @GET("/api/sales")
+    Call<ApiResponse> getAllSales();
+
+    // ✅ Lấy sales đang active
+    @GET("/api/sales/active")
+    Call<ApiResponse> getActiveSales();
+
+    // ✅ Lấy tất cả coupons
+    @GET("/api/coupons")
+    Call<ApiResponse> getAllCoupons();
+
+    // ✅ Lấy coupons đang active
+    @GET("/api/coupons/active")
+    Call<ApiResponse> getActiveCoupons();
+
+    // ✅ Validate coupon code
+    @GET("/api/coupons/validate/{couponCode}")
+    Call<com.example.frontend.model.Coupon> validateCoupon(@Path("couponCode") String couponCode);
 
     // ===============================
     // ORDER ENDPOINTS
@@ -135,7 +158,7 @@ public interface ApiService {
      * Tính phí ship
      */
     @GET("api/orders/calculate-shipping")
-    Call<ApiResponse<com.example.frontend.model.ShippingCalculationResponse>> calculateShipping(
+    Call<ApiResponse<ShippingFeeInfo>> calculateShipping(
             @Query("customerLat") double customerLat,
             @Query("customerLng") double customerLng,
             @Query("restaurantLat") double restaurantLat,
@@ -156,38 +179,15 @@ public interface ApiService {
     Call<ApiResponse<List<Order>>> getOrdersByUserId(@Header("Authorization") String token, @Path("userId") Long userId);
 
     /**
-     * Tính phí ship dựa trên địa chỉ text
+     * Lấy thông tin phí ship từ database
      */
-    @GET("api/shipping-fee")
-    Call<ApiResponse<ShippingCalculationResponse>> calculateShippingFee(@Query("address") String address);
+    @GET("/api/orders/shipping-fee")
+    Call<ApiResponse<ShippingFeeInfo>> getShippingFeeInfo();
 
     // ===============================
-    // ADDRESS & LOCATION ENDPOINTS
+    // ADDRESS & LOCATION ENDPOINTS - REMOVED (simplified to manual input)
     // ===============================
-
-    /**
-     * Lấy danh sách các thành phố có sẵn
-     */
-    @GET("/api/app/cities")
-    Call<ApiResponse<List<String>>> getAvailableCities();
-
-    /**
-     * Lấy danh sách các quận/huyện theo thành phố
-     */
-    @GET("/api/app/districts")
-    Call<ApiResponse<List<String>>> getDistrictsByCity(@Query("city") String city);
-
-    /**
-     * Lấy danh sách các phường/xã theo quận/huyện
-     */
-    @GET("/api/app/wards")
-    Call<ApiResponse<List<String>>> getWardsByDistrict(@Query("city") String city, @Query("district") String district);
-
-    /**
-     * Tính phí ship dựa trên address components
-     */
-    @POST("/api/app/calculate-shipping")
-    Call<ApiResponse<ShippingCalculationResponse>> calculateShippingWithAddress(@Body ShippingCalculationRequest request);
+    // All address-related APIs have been removed as the system now uses simple manual address input
 
     /**
      * Kiểm tra khả năng giao hàng
@@ -200,6 +200,12 @@ public interface ApiService {
      */
     @GET("/api/app/store-info")
     Call<ApiResponse<StoreInfo>> getStoreInfo();
+
+    /**
+     * Lấy thông tin phí ship mặc định
+     */
+    @GET("/api/shipping-fee/default")
+    Call<ApiResponse<ShippingFeeInfo>> getDefaultShippingFeeInfo();
 
     // DTOs for API requests
     class DeliveryLocationRequest {

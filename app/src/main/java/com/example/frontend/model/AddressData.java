@@ -25,3 +25,9 @@ public class AddressData {
     public List<String> getWards() { return wards; }
     public void setWards(List<String> wards) { this.wards = wards; }
 }
+
+
+
+
+
+

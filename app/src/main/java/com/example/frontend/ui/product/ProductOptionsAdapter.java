@@ -27,27 +27,38 @@ public class ProductOptionsAdapter extends RecyclerView.Adapter<ProductOptionsAd
     }
 
     public ProductOptionsAdapter(List<ProductOption> options, OnOptionClickListener listener) {
+        android.util.Log.d("ProductOptionsAdapter", "Constructor called with " + (options != null ? options.size() : 0) + " options");
         this.options = options != null ? options : new ArrayList<>();
         this.selectedOptions = new ArrayList<>();
         this.listener = listener;
+        android.util.Log.d("ProductOptionsAdapter", "Constructor completed successfully");
     }
 
     @NonNull
     @Override
     public OptionViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_product_option, parent, false);
-        return new OptionViewHolder(view);
+        android.util.Log.d("ProductOptionsAdapter", "onCreateViewHolder called");
+        try {
+            View view = LayoutInflater.from(parent.getContext())
+                    .inflate(R.layout.item_product_option, parent, false);
+            android.util.Log.d("ProductOptionsAdapter", "Layout inflated successfully");
+            return new OptionViewHolder(view);
+        } catch (Exception e) {
+            android.util.Log.e("ProductOptionsAdapter", "Error in onCreateViewHolder: " + e.getMessage(), e);
+            throw e;
+        }
     }
 
     @Override
     public void onBindViewHolder(@NonNull OptionViewHolder holder, int position) {
         ProductOption option = options.get(position);
+        android.util.Log.d("ProductOptionsAdapter", "Binding option " + position + ": " + option.getOptionName());
         holder.bind(option);
     }
 
     @Override
     public int getItemCount() {
+        android.util.Log.d("ProductOptionsAdapter", "getItemCount: " + options.size());
         return options.size();
     }
 
@@ -60,13 +71,21 @@ public class ProductOptionsAdapter extends RecyclerView.Adapter<ProductOptionsAd
         notifyDataSetChanged();
     }
 
+    public void updateOptions(List<ProductOption> newOptions) {
+        android.util.Log.d("ProductOptionsAdapter", "updateOptions called with " + (newOptions != null ? newOptions.size() : 0) + " options");
+        this.options = newOptions != null ? newOptions : new ArrayList<>();
+        this.selectedOptions.clear(); // Clear previous selections
+        notifyDataSetChanged();
+        android.util.Log.d("ProductOptionsAdapter", "updateOptions completed, notifyDataSetChanged called");
+    }
+
     class OptionViewHolder extends RecyclerView.ViewHolder {
         private MaterialCardView optionCard;
         private ImageView ivOptionIcon;
         private TextView tvOptionName;
         private TextView tvOptionType;
         private TextView tvIsRequired;
-        private TextView tvExtraPrice;
+        private TextView tvPrice;
         private ImageView ivOptionCheck;
 
         public OptionViewHolder(@NonNull View itemView) {
@@ -76,12 +95,12 @@ public class ProductOptionsAdapter extends RecyclerView.Adapter<ProductOptionsAd
             tvOptionName = itemView.findViewById(R.id.tvOptionName);
             tvOptionType = itemView.findViewById(R.id.tvOptionType);
             tvIsRequired = itemView.findViewById(R.id.tvIsRequired);
-            tvExtraPrice = itemView.findViewById(R.id.tvExtraPrice);
+            tvPrice = itemView.findViewById(R.id.tvPrice);
             ivOptionCheck = itemView.findViewById(R.id.ivOptionCheck);
         }
 
         public void bind(ProductOption option) {
-            android.util.Log.d("ProductOptionsAdapter", "Binding option: " + option.getOptionName() + ", extraPrice: " + option.getExtraPrice());
+            android.util.Log.d("ProductOptionsAdapter", "Binding option: " + option.getOptionName() + ", price: " + option.getPrice());
 
             tvOptionName.setText(option.getOptionName());
             tvOptionType.setText(option.getOptionType() != null ? option.getOptionType().toUpperCase() : "");
@@ -89,7 +108,7 @@ public class ProductOptionsAdapter extends RecyclerView.Adapter<ProductOptionsAd
             // Debug price formatting
             String formattedPrice = option.getFormattedPrice();
             android.util.Log.d("ProductOptionsAdapter", "Formatted price: '" + formattedPrice + "'");
-            tvExtraPrice.setText(formattedPrice);
+            tvPrice.setText(formattedPrice);
 
             // Show required indicator
             if (option.isRequired()) {

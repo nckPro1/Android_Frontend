@@ -8,9 +8,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public class Order implements Serializable {
-
+    
     private static final long serialVersionUID = 1L;
-
+    
     private Long orderId;
     private String orderNumber;
     private Long userId;
@@ -32,13 +32,13 @@ public class Order implements Serializable {
     private String deliveryStreet;
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime estimatedDeliveryTime;
-
+    
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime actualDeliveryTime;
-
+    
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime createdAt;
-
+    
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime updatedAt;
     private List<OrderItem> orderItems;
@@ -46,7 +46,7 @@ public class Order implements Serializable {
     // Constructors
     public Order() {}
 
-    public Order(Long orderId, String orderNumber, Long userId, OrderStatus orderStatus,
+    public Order(Long orderId, String orderNumber, Long userId, OrderStatus orderStatus, 
                  BigDecimal totalAmount, BigDecimal shippingFee, BigDecimal finalAmount,
                  PaymentMethod paymentMethod, String deliveryAddress, String deliveryNotes) {
         this.orderId = orderId;
@@ -137,7 +137,7 @@ public class Order implements Serializable {
     // Helper methods
     public String getOrderStatusDisplay() {
         if (orderStatus == null) return "UNKNOWN";
-
+        
         switch (orderStatus) {
             case PENDING: return "Chờ xử lý";
             case CONFIRMED: return "Đã nhận";
@@ -149,7 +149,7 @@ public class Order implements Serializable {
 
     public String getPaymentStatusDisplay() {
         if (paymentStatus == null) return "UNKNOWN";
-
+        
         switch (paymentStatus) {
             case PENDING: return "Chờ thanh toán";
             case COMPLETED: return "Đã thanh toán";
@@ -161,7 +161,7 @@ public class Order implements Serializable {
 
     public String getPaymentMethodDisplay() {
         if (paymentMethod == null) return "UNKNOWN";
-
+        
         switch (paymentMethod) {
             case CASH: return "Tiền mặt";
             case CARD: return "Thẻ";
@@ -237,8 +237,8 @@ public class Order implements Serializable {
 
         public CreateOrderRequest() {}
 
-        public CreateOrderRequest(String deliveryAddress, String deliveryNotes,
-                                  String paymentMethod, List<OrderItemRequest> orderItems) {
+        public CreateOrderRequest(String deliveryAddress, String deliveryNotes, 
+                                String paymentMethod, List<OrderItemRequest> orderItems) {
             this.deliveryAddress = deliveryAddress;
             this.deliveryNotes = deliveryNotes;
             this.paymentMethod = paymentMethod;

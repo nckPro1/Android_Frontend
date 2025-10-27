@@ -204,8 +204,8 @@ public class ProfileActivity extends AppCompatActivity {
             Intent intent = new Intent(ProfileActivity.this, ChangePasswordActivity.class);
             startActivity(intent);
         } else if ("ADDRESS".equals(item.getId())) {
-            Intent intent = new Intent(ProfileActivity.this, DeliveryAddressActivity.class);
-            startActivity(intent);
+            // Address management removed - users can enter address directly in checkout
+            Toast.makeText(this, "Địa chỉ sẽ được nhập trong bước thanh toán", Toast.LENGTH_SHORT).show();
         } else if ("LOGOUT".equals(item.getId())) {
             // Show confirmation dialog
             new androidx.appcompat.app.AlertDialog.Builder(this)

@@ -8,6 +8,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
@@ -25,8 +26,7 @@ import com.example.frontend.R;
 import com.example.frontend.model.ApiResponse;
 import com.example.frontend.model.CartItem;
 import com.example.frontend.model.Order;
-import com.example.frontend.model.ShippingCalculationResponse;
-import com.example.frontend.model.ShippingCalculationRequest;
+import com.example.frontend.model.ShippingFeeInfo;
 import com.example.frontend.model.UserDto;
 import com.example.frontend.remote.ApiClient;
 import com.example.frontend.remote.ApiService;
@@ -52,6 +52,11 @@ public class CheckoutActivity extends AppCompatActivity {
     private CheckoutAdapter checkoutAdapter;
     private EditText textViewDeliveryAddress;
     private EditText textViewDeliveryNotes;
+    private EditText editTextCouponCode;
+    private Button buttonApplyCoupon;
+    private LinearLayout layoutAppliedCoupon;
+    private TextView textViewCouponDiscount;
+    private ImageView imageViewRemoveCoupon;
     private RadioGroup radioGroupPaymentMethod;
     private RadioButton radioButtonCash;
     private RadioButton radioButtonCard;
@@ -70,6 +75,7 @@ public class CheckoutActivity extends AppCompatActivity {
     private BigDecimal shippingFee;
     private BigDecimal discount;
     private BigDecimal total;
+    private String appliedCouponCode;
     private TokenManager tokenManager;
     private CartManager cartManager;
     private ApiService apiService;
@@ -101,6 +107,11 @@ public class CheckoutActivity extends AppCompatActivity {
         recyclerViewCartItems = findViewById(R.id.recyclerViewCartItems);
         textViewDeliveryAddress = findViewById(R.id.textViewDeliveryAddress);
         textViewDeliveryNotes = findViewById(R.id.textViewDeliveryNotes);
+        editTextCouponCode = findViewById(R.id.editTextCouponCode);
+        buttonApplyCoupon = findViewById(R.id.buttonApplyCoupon);
+        layoutAppliedCoupon = findViewById(R.id.layoutAppliedCoupon);
+        textViewCouponDiscount = findViewById(R.id.textViewCouponDiscount);
+        imageViewRemoveCoupon = findViewById(R.id.imageViewRemoveCoupon);
         radioGroupPaymentMethod = findViewById(R.id.radioGroupPaymentMethod);
         radioButtonCash = findViewById(R.id.radioButtonCash);
         radioButtonCard = findViewById(R.id.radioButtonCard);
@@ -148,6 +159,10 @@ public class CheckoutActivity extends AppCompatActivity {
         });
 
         buttonPlaceOrder.setOnClickListener(v -> placeOrder());
+
+        // Coupon listeners
+        buttonApplyCoupon.setOnClickListener(v -> applyCoupon());
+        imageViewRemoveCoupon.setOnClickListener(v -> removeCoupon());
     }
 
     private void loadData() {
@@ -180,14 +195,12 @@ public class CheckoutActivity extends AppCompatActivity {
                 if (response.isSuccessful() && response.body() != null) {
                     currentUser = response.body();
 
-                    // Set delivery address from user profile
+                    // Set delivery address from user profile if available
                     if (currentUser.getAddress() != null && !currentUser.getAddress().isEmpty()) {
                         textViewDeliveryAddress.setText(currentUser.getAddress());
-                    } else if (currentUser.hasAddressComponents()) {
-                        textViewDeliveryAddress.setText(currentUser.getFullAddress());
                     }
 
-                    // Calculate shipping fee with user's address
+                    // Calculate shipping fee (simplified - just use default fee)
                     calculateShippingFee();
                 }
             }
@@ -195,54 +208,76 @@ public class CheckoutActivity extends AppCompatActivity {
             @Override
             public void onFailure(Call<UserDto> call, Throwable t) {
                 Log.e("CheckoutActivity", "Error loading user profile: " + t.getMessage(), t);
+                // Still calculate shipping fee even if user profile fails
+                calculateShippingFee();
             }
         });
     }
 
-    private void calculateSubtotal() {
-        subtotal = BigDecimal.ZERO;
+    private BigDecimal calculateSubtotal() {
+        BigDecimal total = BigDecimal.ZERO;
         for (CartItem item : cartItems) {
-            BigDecimal itemTotal = item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
-            subtotal = subtotal.add(itemTotal);
+            BigDecimal itemTotal = item.getCurrentPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+            total = total.add(itemTotal);
         }
+        subtotal = total; // Update field for other uses
+        return total;
     }
 
     private void calculateShippingFee() {
-        if (currentUser == null || !currentUser.hasAddressComponents()) {
-            // Fallback to default shipping fee
-            shippingFee = BigDecimal.valueOf(15000);
-            updateUI();
-            return;
+        String deliveryAddress = textViewDeliveryAddress.getText().toString().trim();
+
+        Log.d("CheckoutActivity", "🔍 calculateShippingFee called. Address length: " + deliveryAddress.length());
+
+        // Always call API to get shipping fee from database
+        // Don't return early even if address is empty
+
+        if (deliveryAddress.isEmpty()) {
+            Log.d("CheckoutActivity", "⚠️ Address is empty, but still calling API to get default shipping fee");
+        } else {
+            Log.d("CheckoutActivity", "✓ Address exists: " + deliveryAddress.substring(0, Math.min(20, deliveryAddress.length())) + "...");
         }
 
-        // Create shipping calculation request
-        ShippingCalculationRequest request = new ShippingCalculationRequest();
-        request.setOrderAmount(subtotal);
-        request.setDeliveryCity(currentUser.getUserCity());
-        request.setDeliveryDistrict(currentUser.getUserDistrict());
-        request.setDeliveryWard(currentUser.getUserWard());
-        request.setDeliveryStreet(currentUser.getUserStreet());
-
-        Call<ApiResponse<ShippingCalculationResponse>> call = apiService.calculateShippingWithAddress(request);
-        call.enqueue(new Callback<ApiResponse<ShippingCalculationResponse>>() {
+        // Call backend API to get shipping fee info
+        Log.d("CheckoutActivity", "Calling API: GET /api/orders/shipping-fee");
+        Call<ApiResponse<ShippingFeeInfo>> call = apiService.getShippingFeeInfo();
+        call.enqueue(new Callback<ApiResponse<ShippingFeeInfo>>() {
             @Override
-            public void onResponse(Call<ApiResponse<ShippingCalculationResponse>> call, Response<ApiResponse<ShippingCalculationResponse>> response) {
+            public void onResponse(Call<ApiResponse<ShippingFeeInfo>> call, Response<ApiResponse<ShippingFeeInfo>> response) {
+                Log.d("CheckoutActivity", "API Response received. isSuccessful=" + response.isSuccessful());
+
                 if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
-                    ShippingCalculationResponse shippingResponse = response.body().getData();
-                    shippingFee = shippingResponse.getShippingFee();
+                    ShippingFeeInfo shippingInfo = response.body().getData();
+
+                    // Logic: Nếu subtotal >= freeShippingThreshold thì free ship
+                    BigDecimal freeShippingThreshold = shippingInfo.getFreeShippingThreshold();
+                    BigDecimal defaultShippingFee = shippingInfo.getDefaultShippingFee();
+
+                    if (freeShippingThreshold != null && subtotal.compareTo(freeShippingThreshold) >= 0) {
+                        // Subtotal >= threshold → FREE SHIP
+                        shippingFee = BigDecimal.ZERO;
+                        Log.d("CheckoutActivity", "✓ Free shipping! Subtotal=" + subtotal + " >= threshold=" + freeShippingThreshold);
+                    } else {
+                        // Subtotal < threshold → pay shipping
+                        shippingFee = defaultShippingFee != null ? defaultShippingFee : BigDecimal.ZERO;
+                        Log.d("CheckoutActivity", "✓ Shipping fee: " + shippingFee + " (subtotal=" + subtotal + ", threshold=" + freeShippingThreshold + ")");
+                    }
+
                     updateUI();
                 } else {
-                    // Fallback to default shipping fee
-                    shippingFee = BigDecimal.valueOf(15000);
+                    Log.w("CheckoutActivity", "API response failed or unsuccessful. Body: " +
+                            (response.body() != null ? response.body().getMessage() : "null"));
+                    // Fallback to 0 if API fails
+                    shippingFee = BigDecimal.ZERO;
                     updateUI();
                 }
             }
 
             @Override
-            public void onFailure(Call<ApiResponse<ShippingCalculationResponse>> call, Throwable t) {
-                Log.e("CheckoutActivity", "Error calculating shipping fee: " + t.getMessage(), t);
-                // Fallback to default shipping fee
-                shippingFee = BigDecimal.valueOf(15000);
+            public void onFailure(Call<ApiResponse<ShippingFeeInfo>> call, Throwable t) {
+                Log.e("CheckoutActivity", "Error calling shipping fee API: " + t.getMessage(), t);
+                // Fallback to 0 if API call fails
+                shippingFee = BigDecimal.ZERO;
                 updateUI();
             }
         });
@@ -278,12 +313,9 @@ public class CheckoutActivity extends AppCompatActivity {
         orderRequest.setDeliveryNotes(textViewDeliveryNotes.getText().toString().trim());
         orderRequest.setPaymentMethod(paymentMethod);
 
-        // Add address components if available
-        if (currentUser != null && currentUser.hasAddressComponents()) {
-            orderRequest.setDeliveryCity(currentUser.getUserCity());
-            orderRequest.setDeliveryDistrict(currentUser.getUserDistrict());
-            orderRequest.setDeliveryWard(currentUser.getUserWard());
-            orderRequest.setDeliveryStreet(currentUser.getUserStreet());
+        // Add coupon code if applied
+        if (appliedCouponCode != null) {
+            orderRequest.setCouponCode(appliedCouponCode);
         }
 
         // Convert cart items to order items
@@ -292,9 +324,21 @@ public class CheckoutActivity extends AppCompatActivity {
             Order.OrderItemRequest orderItem = new Order.OrderItemRequest();
             orderItem.setProductId(cartItem.getProductId());
             orderItem.setQuantity(cartItem.getQuantity());
+
+            // Add selected option IDs if any
+            if (cartItem.getSelectedOptions() != null && !cartItem.getSelectedOptions().isEmpty()) {
+                List<Long> optionIds = new ArrayList<>();
+                for (var option : cartItem.getSelectedOptions()) {
+                    optionIds.add(option.getOptionId());
+                }
+                orderItem.setSelectedOptionIds(optionIds);
+            }
+
             orderItems.add(orderItem);
         }
         orderRequest.setOrderItems(orderItems);
+
+        Log.d("CheckoutActivity", "📤 Sending order request with couponCode: " + orderRequest.getCouponCode());
 
         // Show loading
         showLoading(true);
@@ -348,5 +392,76 @@ public class CheckoutActivity extends AppCompatActivity {
     private void showLoading(boolean show) {
         progressBar.setVisibility(show ? View.VISIBLE : View.GONE);
         buttonPlaceOrder.setEnabled(!show);
+    }
+
+    // Coupon methods
+    private void applyCoupon() {
+        String couponCode = editTextCouponCode.getText().toString().trim();
+        if (couponCode.isEmpty()) {
+            Toast.makeText(this, "Vui lòng nhập mã giảm giá", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        showLoading(true);
+        Call<com.example.frontend.model.Coupon> call = apiService.validateCoupon(couponCode);
+        call.enqueue(new Callback<com.example.frontend.model.Coupon>() {
+            @Override
+            public void onResponse(Call<com.example.frontend.model.Coupon> call, Response<com.example.frontend.model.Coupon> response) {
+                showLoading(false);
+                if (response.isSuccessful() && response.body() != null) {
+                    com.example.frontend.model.Coupon coupon = response.body();
+                    appliedCouponCode = couponCode;
+
+                    // Calculate discount based on discount type
+                    BigDecimal subtotal = calculateSubtotal();
+                    if (coupon.isPercentageDiscount()) {
+                        // Percentage discount: discountValue is percentage (e.g., 20 for 20%)
+                        discount = subtotal.multiply(coupon.getDiscountValue()).divide(BigDecimal.valueOf(100));
+                    } else {
+                        // Fixed amount discount: discountValue is the amount to subtract
+                        discount = coupon.getDiscountValue();
+                    }
+
+                    // Show applied coupon UI
+                    layoutAppliedCoupon.setVisibility(View.VISIBLE);
+                    textViewCouponDiscount.setText("-" + PriceFormatter.format(discount));
+
+                    // Hide coupon input
+                    editTextCouponCode.setVisibility(View.GONE);
+                    buttonApplyCoupon.setVisibility(View.GONE);
+
+                    // Recalculate shipping fee based on new subtotal (subtotal hasn't changed, but we need to refresh)
+                    calculateShippingFee();
+
+                    Toast.makeText(CheckoutActivity.this, "Áp dụng mã giảm giá thành công", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(CheckoutActivity.this, "Mã giảm giá không hợp lệ", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<com.example.frontend.model.Coupon> call, Throwable t) {
+                showLoading(false);
+                Toast.makeText(CheckoutActivity.this, "Lỗi kiểm tra mã giảm giá: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void removeCoupon() {
+        appliedCouponCode = null;
+        discount = BigDecimal.ZERO;
+
+        // Hide applied coupon UI
+        layoutAppliedCoupon.setVisibility(View.GONE);
+
+        // Show coupon input
+        editTextCouponCode.setVisibility(View.VISIBLE);
+        buttonApplyCoupon.setVisibility(View.VISIBLE);
+        editTextCouponCode.setText("");
+
+        // Recalculate shipping fee
+        calculateShippingFee();
+
+        Toast.makeText(this, "Đã xóa mã giảm giá", Toast.LENGTH_SHORT).show();
     }
 }

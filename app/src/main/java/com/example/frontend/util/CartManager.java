@@ -47,13 +47,16 @@ public class CartManager {
         if (product == null || product.getProductId() == null) return;
 
         List<CartItem> cartItems = getCartItems();
+        // Use current price (sale price if on sale, otherwise regular price)
+        BigDecimal currentPrice = product.getCurrentPrice();
+
         // Create a temporary CartItem to find existing item with same productId + selectedOptions
         CartItem tempItem = new CartItem(
                 product.getProductId(),
                 safe(product.getName()),
                 safe(product.getDescription()),
                 ensureFullImageUrl(product.getImageUrl()),
-                product.getPrice() != null ? product.getPrice() : BigDecimal.ZERO,
+                currentPrice != null ? currentPrice : BigDecimal.ZERO,
                 0, // quantity doesn't matter for comparison
                 selectedOptions != null ? selectedOptions : new ArrayList<>()
         );
@@ -71,18 +74,25 @@ public class CartManager {
             }
             android.util.Log.d("CartManager", "Updated existing item quantity to: " + existingItem.getQuantity());
         } else {
-            // Tạo cart item mới cho combination productId + selectedOptions mới
+            // Tạo cart item mới với giá sale thông tin
             CartItem newItem = new CartItem(
                     product.getProductId(),
                     safe(product.getName()),
                     safe(product.getDescription()),
-                    normalizedImage,                               // ❗ set ảnh đã chuẩn hoá
-                    product.getPrice() != null ? product.getPrice() : BigDecimal.ZERO,
+                    normalizedImage,
+                    currentPrice != null ? currentPrice : BigDecimal.ZERO,
                     Math.max(0, quantity),
                     selectedOptions != null ? selectedOptions : new ArrayList<>()
             );
+
+            // Set sale information
+            newItem.setOriginalPrice(product.getPrice());
+            newItem.setSalePrice(product.getSalePrice());
+            newItem.setIsOnSale(product.getIsOnSale());
+            newItem.setDiscountPercentage(product.getSalePercentage());
+
             cartItems.add(newItem);
-            android.util.Log.d("CartManager", "Created new cart item for product: " + product.getName() + " with " + (selectedOptions != null ? selectedOptions.size() : 0) + " options");
+            android.util.Log.d("CartManager", "Created new cart item for product: " + product.getName() + " with " + (selectedOptions != null ? selectedOptions.size() : 0) + " options, price: " + currentPrice);
         }
 
         saveCartItems(cartItems);
@@ -90,9 +100,19 @@ public class CartManager {
 
     // Remove product from cart
     public void removeFromCart(Long productId) {
-        if (productId == null) return;
+        if (productId == null) {
+            android.util.Log.w("CartManager", "removeFromCart: productId is null");
+            return;
+        }
+
         List<CartItem> cartItems = getCartItems();
-        cartItems.removeIf(item -> productId.equals(item.getProductId()));
+        int originalSize = cartItems.size();
+
+        cartItems.removeIf(item -> item != null && productId.equals(item.getProductId()));
+
+        int newSize = cartItems.size();
+        android.util.Log.d("CartManager", "removeFromCart: removed " + (originalSize - newSize) + " items for productId: " + productId);
+
         saveCartItems(cartItems);
     }
 
@@ -128,45 +148,89 @@ public class CartManager {
 
     // Update quantity for specific product
     public void updateQuantity(Long productId, int newQuantity) {
-        if (productId == null) return;
+        if (productId == null) {
+            android.util.Log.w("CartManager", "updateQuantity: productId is null");
+            return;
+        }
 
         List<CartItem> cartItems = getCartItems();
+        boolean found = false;
+
+        android.util.Log.d("CartManager", "updateQuantity: Looking for productId: " + productId + ", newQuantity: " + newQuantity);
+        android.util.Log.d("CartManager", "updateQuantity: Current cart has " + cartItems.size() + " items");
 
         for (int i = 0; i < cartItems.size(); i++) {
             CartItem item = cartItems.get(i);
-            if (productId.equals(item.getProductId())) {
+            if (item != null && productId.equals(item.getProductId())) {
+                android.util.Log.d("CartManager", "updateQuantity: Found item - " + item.getProductName() + ", current quantity: " + item.getQuantity());
+
                 if (newQuantity <= 0) {
                     // Nếu về 0 thì xoá luôn (tránh quantity âm và trạng thái lệch)
                     cartItems.remove(i);
+                    android.util.Log.d("CartManager", "Removed item with productId: " + productId);
                 } else {
+                    int oldQuantity = item.getQuantity();
                     item.setQuantity(newQuantity);
+                    android.util.Log.d("CartManager", "Updated quantity for " + item.getProductName() + " from " + oldQuantity + " to " + newQuantity);
                 }
+                found = true;
                 break;
+            } else if (item != null) {
+                android.util.Log.d("CartManager", "updateQuantity: Skipping item - " + item.getProductName() + " (ID: " + item.getProductId() + ")");
             }
         }
 
+        if (!found) {
+            android.util.Log.w("CartManager", "Product not found in cart: " + productId);
+        }
+
         saveCartItems(cartItems);
+        android.util.Log.d("CartManager", "updateQuantity: Cart saved with " + cartItems.size() + " items");
     }
 
     // Update quantity for specific cart item (with specific options)
     public void updateCartItemQuantity(CartItem cartItem, int newQuantity) {
-        if (cartItem == null) return;
+        if (cartItem == null) {
+            android.util.Log.w("CartManager", "updateCartItemQuantity: cartItem is null");
+            return;
+        }
 
         List<CartItem> cartItems = getCartItems();
+        boolean found = false;
+
+        android.util.Log.d("CartManager", "updateCartItemQuantity: Looking for item - " + cartItem.getProductName() + " (ID: " + cartItem.getProductId() + "), newQuantity: " + newQuantity);
+        android.util.Log.d("CartManager", "updateCartItemQuantity: Current cart has " + cartItems.size() + " items");
 
         for (int i = 0; i < cartItems.size(); i++) {
-            if (cartItem.equals(cartItems.get(i))) {
-                if (newQuantity <= 0) {
-                    // Nếu về 0 thì xoá luôn
-                    cartItems.remove(i);
-                } else {
-                    cartItems.get(i).setQuantity(newQuantity);
+            CartItem item = cartItems.get(i);
+            if (item != null) {
+                boolean isEqual = cartItem.equals(item);
+                android.util.Log.d("CartManager", "updateCartItemQuantity: Comparing item " + i + " - " + item.getProductName() + " (qty: " + item.getQuantity() + ") with target " + cartItem.getProductName() + " (qty: " + cartItem.getQuantity() + ") - equals: " + isEqual);
+
+                if (isEqual) {
+                    android.util.Log.d("CartManager", "updateCartItemQuantity: Found matching item - " + item.getProductName() + ", current quantity: " + item.getQuantity());
+
+                    if (newQuantity <= 0) {
+                        // Nếu về 0 thì xoá luôn
+                        cartItems.remove(i);
+                        android.util.Log.d("CartManager", "Removed item: " + item.getProductName());
+                    } else {
+                        int oldQuantity = item.getQuantity();
+                        item.setQuantity(newQuantity);
+                        android.util.Log.d("CartManager", "Updated quantity for " + item.getProductName() + " from " + oldQuantity + " to " + newQuantity);
+                    }
+                    found = true;
+                    break;
                 }
-                break;
             }
         }
 
+        if (!found) {
+            android.util.Log.w("CartManager", "CartItem not found in cart: " + cartItem.getProductName());
+        }
+
         saveCartItems(cartItems);
+        android.util.Log.d("CartManager", "updateCartItemQuantity: Cart saved with " + cartItems.size() + " items");
     }
 
     // Get all cart items
@@ -313,7 +377,7 @@ public class CartManager {
         return null;
     }
 
-    private void saveCartItems(List<CartItem> cartItems) {
+    public void saveCartItems(List<CartItem> cartItems) {
         try {
             android.util.Log.d("CartManager", "saveCartItems called - Items count: " + (cartItems != null ? cartItems.size() : "null"));
             String json = gson.toJson(cartItems != null ? cartItems : new ArrayList<>());

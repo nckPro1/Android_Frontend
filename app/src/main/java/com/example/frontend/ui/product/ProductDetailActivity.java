@@ -46,6 +46,9 @@ public class ProductDetailActivity extends AppCompatActivity {
     private TextView tvProductName;
     private TextView tvProductDescription;
     private TextView tvProductPrice;
+    private TextView tvOriginalPrice;
+    private TextView tvDiscountPercent;
+    private TextView tvSaleBadge;
     private TextView tvTotalPrice;
     private TextView tvProductCategory;
     private TextView tvPreparationTime;
@@ -118,6 +121,9 @@ public class ProductDetailActivity extends AppCompatActivity {
             tvProductName = findViewById(R.id.tvProductName);
             tvProductDescription = findViewById(R.id.tvProductDescription);
             tvProductPrice = findViewById(R.id.tvProductPrice);
+            tvOriginalPrice = findViewById(R.id.tvOriginalPrice);
+            tvDiscountPercent = findViewById(R.id.tvDiscountPercent);
+            tvSaleBadge = findViewById(R.id.tvSaleBadge);
             tvTotalPrice = findViewById(R.id.tvTotalPrice);
             tvProductCategory = findViewById(R.id.tvProductCategory);
             tvPreparationTime = findViewById(R.id.tvPreparationTime);
@@ -127,6 +133,8 @@ public class ProductDetailActivity extends AppCompatActivity {
             btnAddToFavorites = findViewById(R.id.btnAddToFavorites);
             rvProductOptions = findViewById(R.id.rvProductOptions);
             optionsCardView = findViewById(R.id.optionsCardView);
+            android.util.Log.d("ProductDetailActivity", "rvProductOptions: " + (rvProductOptions != null ? "FOUND" : "NOT FOUND"));
+            android.util.Log.d("ProductDetailActivity", "optionsCardView: " + (optionsCardView != null ? "FOUND" : "NOT FOUND"));
             android.util.Log.d("ProductDetailActivity", "All views initialized successfully");
 
             // Setup RecyclerView for gallery - Horizontal scroll
@@ -158,9 +166,18 @@ public class ProductDetailActivity extends AppCompatActivity {
                             // Parse product data
                             product = com.example.frontend.util.JsonParser.parseProduct(apiResponse.getData());
                             if (product != null) {
+                                // Debug log for sale fields
+                                android.util.Log.d("ProductDetailActivity", "Product sale info:");
+                                android.util.Log.d("ProductDetailActivity", "isOnSale: " + product.isOnSale());
+                                android.util.Log.d("ProductDetailActivity", "salePrice: " + product.getSalePrice());
+                                android.util.Log.d("ProductDetailActivity", "salePercentage: " + product.getSalePercentage());
+                                android.util.Log.d("ProductDetailActivity", "saleStartDate: " + product.getSaleStartDate());
+                                android.util.Log.d("ProductDetailActivity", "saleEndDate: " + product.getSaleEndDate());
+                                android.util.Log.d("ProductDetailActivity", "isSaleActive(): " + product.isSaleActive());
+
                                 displayProductDetail();
-                                // Load options after product is loaded successfully
-                                loadProductOptions();
+                                // Load options from product data instead of separate API call
+                                loadProductOptionsFromProduct();
                             } else {
                                 showError("Không thể parse dữ liệu sản phẩm");
                             }
@@ -182,92 +199,79 @@ public class ProductDetailActivity extends AppCompatActivity {
         });
     }
 
-    private void loadProductOptions() {
-        if (productId == null || productId == -1) {
-            android.util.Log.d("ProductDetailActivity", "No valid productId, skipping options load");
-            return;
-        }
+    private void loadProductOptionsFromProduct() {
+        android.util.Log.d("ProductDetailActivity", "Loading product options from product data");
 
-        android.util.Log.d("ProductDetailActivity", "Loading product options for productId: " + productId);
+        if (product != null && product.getOptions() != null && !product.getOptions().isEmpty()) {
+            productOptions = product.getOptions();
+            android.util.Log.d("ProductDetailActivity", "Found " + productOptions.size() + " options in product data");
 
-        try {
-            apiService.getProductOptions(productId).enqueue(new Callback<com.example.frontend.model.ApiResponse>() {
-                @Override
-                public void onResponse(Call<com.example.frontend.model.ApiResponse> call, Response<com.example.frontend.model.ApiResponse> response) {
-                    android.util.Log.d("ProductDetailActivity", "Options API response code: " + response.code());
-
-                    if (response.isSuccessful() && response.body() != null) {
-                        com.example.frontend.model.ApiResponse apiResponse = response.body();
-                        android.util.Log.d("ProductDetailActivity", "Options API success: " + apiResponse.isSuccess());
-
-                        if (apiResponse.isSuccess()) {
-                            try {
-                                // Log raw data first
-                                android.util.Log.d("ProductDetailActivity", "Raw options data: " + apiResponse.getData());
-
-                                List<ProductOption> options = JsonParser.parseProductOptions(apiResponse.getData());
-                                android.util.Log.d("ProductDetailActivity", "Parsed options count: " + (options != null ? options.size() : 0));
-
-                                if (options != null && !options.isEmpty()) {
-                                    // Log each option details
-                                    for (int i = 0; i < options.size(); i++) {
-                                        ProductOption option = options.get(i);
-                                        android.util.Log.d("ProductDetailActivity", "Option " + i + ": " + option.toString());
-                                    }
-
-                                    productOptions = options;
-                                    setupProductOptions();
-                                } else {
-                                    android.util.Log.d("ProductDetailActivity", "No options found for product");
-                                }
-                            } catch (Exception e) {
-                                android.util.Log.e("ProductDetailActivity", "Error parsing options: " + e.getMessage());
-                                e.printStackTrace();
-                            }
-                        } else {
-                            android.util.Log.w("ProductDetailActivity", "Options API returned error: " + apiResponse.getMessage());
-                        }
-                    } else {
-                        android.util.Log.w("ProductDetailActivity", "Options API failed with code: " + response.code());
-                    }
-                }
-
-                @Override
-                public void onFailure(Call<com.example.frontend.model.ApiResponse> call, Throwable t) {
-                    android.util.Log.e("ProductDetailActivity", "Error loading options: " + t.getMessage());
-                    t.printStackTrace();
-                }
-            });
-        } catch (Exception e) {
-            android.util.Log.e("ProductDetailActivity", "Exception in loadProductOptions: " + e.getMessage());
-            e.printStackTrace();
+            // Update UI with options
+            updateOptionsUI();
+        } else {
+            android.util.Log.d("ProductDetailActivity", "No options found in product data");
+            productOptions = new ArrayList<>();
+            updateOptionsUI();
         }
     }
 
-    private void setupProductOptions() {
-        android.util.Log.d("ProductDetailActivity", "=== setupProductOptions called ===");
-        android.util.Log.d("ProductDetailActivity", "productOptions size: " + (productOptions != null ? productOptions.size() : "null"));
+    private void updateOptionsUI() {
+        android.util.Log.d("ProductDetailActivity", "Updating options UI with " + (productOptions != null ? productOptions.size() : 0) + " options");
 
-        if (productOptions == null || productOptions.isEmpty()) {
-            android.util.Log.d("ProductDetailActivity", "No options, hiding options card");
-            optionsCardView.setVisibility(View.GONE);
-            return;
-        }
+        if (productOptions != null && !productOptions.isEmpty()) {
+            // Show options section
+            android.util.Log.d("ProductDetailActivity", "Setting optionsCardView visibility to VISIBLE");
+            optionsCardView.setVisibility(View.VISIBLE);
 
-        android.util.Log.d("ProductDetailActivity", "Showing options card with " + productOptions.size() + " options");
-        optionsCardView.setVisibility(View.VISIBLE);
-        rvProductOptions.setVisibility(View.VISIBLE);
+            // Setup adapter
+            if (productOptionsAdapter == null) {
+                try {
+                    android.util.Log.d("ProductDetailActivity", "Creating new ProductOptionsAdapter with " + productOptions.size() + " options");
 
-        ProductOptionsAdapter adapter = new ProductOptionsAdapter(productOptions, new ProductOptionsAdapter.OnOptionClickListener() {
-            @Override
-            public void onOptionClick(ProductOption option, boolean isSelected) {
-                android.util.Log.d("ProductDetailActivity", "Option clicked: " + option.getOptionName() + " - Selected: " + isSelected);
-                updateTotalPrice();
+                    // Create callback manually instead of method reference
+                    ProductOptionsAdapter.OnOptionClickListener callback = new ProductOptionsAdapter.OnOptionClickListener() {
+                        @Override
+                        public void onOptionClick(ProductOption option, boolean isSelected) {
+                            ProductDetailActivity.this.onOptionClick(option, isSelected);
+                        }
+                    };
+
+                    android.util.Log.d("ProductDetailActivity", "Callback created successfully");
+                    productOptionsAdapter = new ProductOptionsAdapter(productOptions, callback);
+                    android.util.Log.d("ProductDetailActivity", "Adapter created successfully");
+
+                    android.util.Log.d("ProductDetailActivity", "Checking rvProductOptions: " + (rvProductOptions != null ? "NOT NULL" : "NULL"));
+                    if (rvProductOptions != null) {
+                        android.util.Log.d("ProductDetailActivity", "Setting adapter to RecyclerView");
+                        rvProductOptions.setAdapter(productOptionsAdapter);
+                        android.util.Log.d("ProductDetailActivity", "Adapter set successfully");
+                    } else {
+                        android.util.Log.e("ProductDetailActivity", "rvProductOptions is NULL!");
+                    }
+                } catch (Exception e) {
+                    android.util.Log.e("ProductDetailActivity", "Error creating/setting adapter: " + e.getMessage(), e);
+                }
+            } else {
+                try {
+                    android.util.Log.d("ProductDetailActivity", "Updating existing ProductOptionsAdapter with " + productOptions.size() + " options");
+                    productOptionsAdapter.updateOptions(productOptions);
+                    android.util.Log.d("ProductDetailActivity", "Adapter updated successfully");
+                } catch (Exception e) {
+                    android.util.Log.e("ProductDetailActivity", "Error updating adapter: " + e.getMessage(), e);
+                }
             }
-        });
-        rvProductOptions.setAdapter(adapter);
-        productOptionsAdapter = adapter; // Store adapter reference
-        android.util.Log.d("ProductDetailActivity", "ProductOptionsAdapter set successfully");
+
+            // Check RecyclerView state
+            android.util.Log.d("ProductDetailActivity", "RecyclerView visibility: " + rvProductOptions.getVisibility());
+            android.util.Log.d("ProductDetailActivity", "RecyclerView adapter: " + (rvProductOptions.getAdapter() != null ? "SET" : "NULL"));
+
+            android.util.Log.d("ProductDetailActivity", "Options UI updated successfully");
+        } else {
+            // Hide options section
+            android.util.Log.d("ProductDetailActivity", "Setting optionsCardView visibility to GONE");
+            optionsCardView.setVisibility(View.GONE);
+            android.util.Log.d("ProductDetailActivity", "Options section hidden - no options available");
+        }
     }
 
     private void updateTotalPrice() {
@@ -276,8 +280,9 @@ public class ProductDetailActivity extends AppCompatActivity {
             return;
         }
 
-        java.math.BigDecimal basePrice = product.getPrice();
-        android.util.Log.d("ProductDetailActivity", "updateTotalPrice: basePrice = " + basePrice);
+        // Use current price (sale price if on sale, otherwise regular price)
+        java.math.BigDecimal basePrice = product.getCurrentPrice();
+        android.util.Log.d("ProductDetailActivity", "updateTotalPrice: basePrice = " + basePrice + " (isOnSale: " + product.isOnSale() + ")");
 
         java.math.BigDecimal totalPrice = basePrice;
         android.util.Log.d("ProductDetailActivity", "updateTotalPrice: initial totalPrice = " + totalPrice);
@@ -287,10 +292,10 @@ public class ProductDetailActivity extends AppCompatActivity {
             android.util.Log.d("ProductDetailActivity", "updateTotalPrice: selectedOptions count = " + selectedOptions.size());
 
             for (ProductOption option : selectedOptions) {
-                android.util.Log.d("ProductDetailActivity", "updateTotalPrice: processing option = " + option.getOptionName() + ", extraPrice = " + option.getExtraPrice());
-                if (option.getExtraPrice() != null) {
-                    totalPrice = totalPrice.add(option.getExtraPrice());
-                    android.util.Log.d("ProductDetailActivity", "updateTotalPrice: added " + option.getExtraPrice() + ", new total = " + totalPrice);
+                android.util.Log.d("ProductDetailActivity", "updateTotalPrice: processing option = " + option.getOptionName() + ", price = " + option.getPrice());
+                if (option.getPrice() != null) {
+                    totalPrice = totalPrice.add(option.getPrice());
+                    android.util.Log.d("ProductDetailActivity", "updateTotalPrice: added " + option.getPrice() + ", new total = " + totalPrice);
                 }
             }
         } else {
@@ -329,8 +334,38 @@ public class ProductDetailActivity extends AppCompatActivity {
         // Set basic info
         tvProductName.setText(product.getName());
         tvProductDescription.setText(product.getDescription());
-        tvProductPrice.setText(product.getFormattedPrice());
-        tvTotalPrice.setText(product.getFormattedPrice()); // Set initial total price
+
+        // Display price with sale information
+        if (product.isOnSale() && product.isSaleActive()) {
+            // Show sale badge
+            tvSaleBadge.setVisibility(View.VISIBLE);
+
+            // Show original price with strikethrough
+            tvOriginalPrice.setText(product.getFormattedOriginalPrice());
+            tvOriginalPrice.setVisibility(View.VISIBLE);
+            tvOriginalPrice.setPaintFlags(tvOriginalPrice.getPaintFlags() | android.graphics.Paint.STRIKE_THRU_TEXT_FLAG);
+
+            // Show current sale price
+            tvProductPrice.setText(product.getFormattedCurrentPrice());
+            tvProductPrice.setTextColor(getResources().getColor(R.color.sale_color));
+
+            // Show discount percentage
+            String discountPercent = "-" + product.getDiscountPercentage() + "%";
+            tvDiscountPercent.setText(discountPercent);
+            tvDiscountPercent.setVisibility(View.VISIBLE);
+
+        } else {
+            // Hide sale elements
+            tvSaleBadge.setVisibility(View.GONE);
+            tvOriginalPrice.setVisibility(View.GONE);
+            tvDiscountPercent.setVisibility(View.GONE);
+
+            // Show normal price
+            tvProductPrice.setText(product.getFormattedPrice());
+            tvProductPrice.setTextColor(getResources().getColor(R.color.primary_color));
+        }
+
+        tvTotalPrice.setText(product.getFormattedCurrentPrice()); // Use current price (sale or original)
         tvPreparationTime.setText(product.getPreparationTime() + " phút");
 
         // Category
@@ -497,6 +532,12 @@ public class ProductDetailActivity extends AppCompatActivity {
 
     private void showError(String message) {
         Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+    }
+
+    // Callback for ProductOptionsAdapter
+    public void onOptionClick(ProductOption option, boolean isSelected) {
+        android.util.Log.d("ProductDetailActivity", "onOptionClick: " + option.getOptionName() + " selected: " + isSelected);
+        updateTotalPrice();
     }
 
     @Override

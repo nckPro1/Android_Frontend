@@ -56,3 +56,9 @@ public class StoreInfo {
         return storeStreet + ", " + storeWard + ", " + storeDistrict + ", " + storeCity;
     }
 }
+
+
+
+
+
+

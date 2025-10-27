@@ -119,11 +119,11 @@ public class UserManager {
             currentUser.setUserDistrict(district);
             currentUser.setUserWard(ward);
             currentUser.setUserStreet(street);
-
+            
             // Update full address
             String fullAddress = street + ", " + ward + ", " + district + ", " + city;
             currentUser.setAddress(fullAddress);
-
+            
             saveCurrentUser(currentUser);
         }
     }

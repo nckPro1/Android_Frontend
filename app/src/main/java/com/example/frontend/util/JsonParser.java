@@ -63,11 +63,11 @@ public class JsonParser {
             android.util.Log.d("JsonParser", "parseProductOptions: data type: " + data.getClass().getSimpleName());
             String json = gson.toJson(data);
             android.util.Log.d("JsonParser", "parseProductOptions: raw json: " + json);
-
+            
             Type optionListType = new TypeToken<List<ProductOption>>() {}.getType();
             List<ProductOption> result = gson.fromJson(json, optionListType);
             android.util.Log.d("JsonParser", "parseProductOptions: parsed count: " + (result != null ? result.size() : 0));
-
+            
             // Log each parsed option
             if (result != null) {
                 for (int i = 0; i < result.size(); i++) {
@@ -75,7 +75,7 @@ public class JsonParser {
                     android.util.Log.d("JsonParser", "Parsed option " + i + ": " + option.toString());
                 }
             }
-
+            
             return result;
         } catch (Exception e) {
             android.util.Log.e("JsonParser", "parseProductOptions error: " + e.getMessage(), e);

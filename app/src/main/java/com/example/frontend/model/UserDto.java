@@ -19,7 +19,7 @@ public class UserDto {
     // Constructors
     public UserDto() {}
 
-    public UserDto(Long userId, String email, String fullName, String phoneNumber,
+    public UserDto(Long userId, String email, String fullName, String phoneNumber, 
                    String address, String avatarUrl, Integer roleId, String authProvider,
                    String userCity, String userDistrict, String userWard, String userStreet) {
         this.userId = userId;
@@ -67,9 +67,9 @@ public class UserDto {
     // Helper methods
     public boolean hasAddressComponents() {
         return userCity != null && !userCity.trim().isEmpty() &&
-                userDistrict != null && !userDistrict.trim().isEmpty() &&
-                userWard != null && !userWard.trim().isEmpty() &&
-                userStreet != null && !userStreet.trim().isEmpty();
+               userDistrict != null && !userDistrict.trim().isEmpty() &&
+               userWard != null && !userWard.trim().isEmpty() &&
+               userStreet != null && !userStreet.trim().isEmpty();
     }
 
     public String getFullAddress() {

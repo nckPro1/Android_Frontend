@@ -35,14 +35,30 @@ public class Product {
     @SerializedName("preparationTime")
     private Integer preparationTime;
 
+    // Sale fields
+    @SerializedName("salePrice")
+    private BigDecimal salePrice;
+
+    @SerializedName("salePercentage")
+    private Integer salePercentage;
+
+    @SerializedName("isOnSale")
+    private Boolean isOnSale;
+
+    @SerializedName("saleStartDate")
+    private String saleStartDate;
+
+    @SerializedName("saleEndDate")
+    private String saleEndDate;
+
     @SerializedName("category")
     private Category category;
 
     @SerializedName("createdAt")
     private String createdAt;
 
-    @SerializedName("updatedAt")
-    private String updatedAt;
+    @SerializedName("options")
+    private List<ProductOption> options;
 
     // Constructors
     public Product() {}
@@ -71,7 +87,14 @@ public class Product {
     public Integer getPreparationTime() { return preparationTime; }
     public Category getCategory() { return category; }
     public String getCreatedAt() { return createdAt; }
-    public String getUpdatedAt() { return updatedAt; }
+    public List<ProductOption> getOptions() { return options; }
+
+    // Sale getters
+    public BigDecimal getSalePrice() { return salePrice; }
+    public Integer getSalePercentage() { return salePercentage; }
+    public Boolean getIsOnSale() { return isOnSale; }
+    public String getSaleStartDate() { return saleStartDate; }
+    public String getSaleEndDate() { return saleEndDate; }
 
     // Setters
     public void setProductId(Long productId) { this.productId = productId; }
@@ -84,9 +107,14 @@ public class Product {
     public void setIsAvailable(Boolean isAvailable) { this.isAvailable = isAvailable; }
     public void setIsFeatured(Boolean isFeatured) { this.isFeatured = isFeatured; }
     public void setPreparationTime(Integer preparationTime) { this.preparationTime = preparationTime; }
+    public void setSalePrice(BigDecimal salePrice) { this.salePrice = salePrice; }
+    public void setSalePercentage(Integer salePercentage) { this.salePercentage = salePercentage; }
+    public void setIsOnSale(Boolean isOnSale) { this.isOnSale = isOnSale; }
+    public void setSaleStartDate(String saleStartDate) { this.saleStartDate = saleStartDate; }
+    public void setSaleEndDate(String saleEndDate) { this.saleEndDate = saleEndDate; }
     public void setCategory(Category category) { this.category = category; }
     public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }
-    public void setUpdatedAt(String updatedAt) { this.updatedAt = updatedAt; }
+    public void setOptions(List<ProductOption> options) { this.options = options; }
 
     // Helper methods
     public String getFormattedPrice() {
@@ -104,6 +132,77 @@ public class Product {
             return galleryUrls.get(0);
         }
         return null;
+    }
+
+    // Sale helper methods
+    public BigDecimal getCurrentPrice() {
+        if (isOnSale() && isSaleActive()) {
+            if (salePrice != null) {
+                return salePrice;
+            } else if (salePercentage != null) {
+                return price.multiply(BigDecimal.valueOf(100 - salePercentage)).divide(BigDecimal.valueOf(100));
+            }
+        }
+        return price;
+    }
+
+    public String getFormattedCurrentPrice() {
+        BigDecimal currentPrice = getCurrentPrice();
+        if (currentPrice != null) {
+            return String.format("%,.0f VNĐ", currentPrice.doubleValue());
+        }
+        return "0 VNĐ";
+    }
+
+    public boolean isOnSale() {
+        return isOnSale != null && isOnSale;
+    }
+
+    public boolean isSaleActive() {
+        if (!isOnSale()) return false;
+
+        // Check if sale dates are valid
+        if (saleStartDate == null || saleEndDate == null) {
+            return true; // If no dates specified, assume active
+        }
+
+        try {
+            // Parse date strings (assuming format: "yyyy-MM-dd'T'HH:mm:ss" or "yyyy-MM-dd HH:mm:ss")
+            java.time.LocalDateTime startDate = java.time.LocalDateTime.parse(saleStartDate.replace(" ", "T"));
+            java.time.LocalDateTime endDate = java.time.LocalDateTime.parse(saleEndDate.replace(" ", "T"));
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+
+            return now.isAfter(startDate) && now.isBefore(endDate);
+        } catch (Exception e) {
+            // If parsing fails, assume sale is active
+            return true;
+        }
+    }
+
+    public BigDecimal getDiscountAmount() {
+        if (isOnSale() && isSaleActive()) {
+            return price.subtract(getCurrentPrice());
+        }
+        return BigDecimal.ZERO;
+    }
+
+    public Integer getDiscountPercentage() {
+        if (isOnSale() && isSaleActive()) {
+            if (salePercentage != null) {
+                return salePercentage;
+            } else if (salePrice != null) {
+                BigDecimal discount = getDiscountAmount();
+                return discount.multiply(BigDecimal.valueOf(100)).divide(price).intValue();
+            }
+        }
+        return 0;
+    }
+
+    public String getFormattedOriginalPrice() {
+        if (price != null) {
+            return String.format("%,.0f VNĐ", price.doubleValue());
+        }
+        return "0 VNĐ";
     }
 
     @Override

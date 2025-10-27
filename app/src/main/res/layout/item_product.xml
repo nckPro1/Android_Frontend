@@ -51,6 +51,20 @@
                     android:background="@drawable/featured_badge"
                     android:visibility="gone" />
 
+                <!-- Sale Badge -->
+                <TextView
+                    android:id="@+id/tvSaleBadge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="SALE"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:textColor="@android:color/white"
+                    android:background="@drawable/sale_badge"
+                    android:padding="2dp"
+                    android:layout_marginStart="4dp"
+                    android:visibility="gone" />
+
             </LinearLayout>
 
             <TextView
@@ -72,29 +86,50 @@
                 android:textSize="11sp"
                 android:textStyle="italic" />
 
+            <!-- Price Section -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:orientation="horizontal">
+                android:orientation="vertical">
 
+                <!-- Original Price (when on sale) -->
                 <TextView
-                    android:id="@+id/tvProductPrice"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="0 VNĐ"
-                    android:textColor="@color/primary_color"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/tvPreparationTime"
+                    android:id="@+id/tvOriginalPrice"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="15 phút"
+                    android:text="0 VNĐ"
                     android:textColor="@android:color/darker_gray"
-                    android:textSize="11sp" />
+                    android:textSize="12sp"
+                    android:layout_marginBottom="2dp"
+                    android:visibility="gone" />
+
+                <!-- Current Price -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/tvProductPrice"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="0 VNĐ"
+                        android:textColor="@color/primary_color"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvPreparationTime"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="15 phút"
+                        android:textColor="@android:color/darker_gray"
+                        android:textSize="11sp" />
+
+                </LinearLayout>
 
             </LinearLayout>
 
