@@ -8,32 +8,48 @@ import com.google.gson.reflect.TypeToken;
 
 import java.lang.reflect.Type;
 import java.util.List;
+import java.util.Collections;
+import java.util.ArrayList;
+import java.util.Map;
 
 public class JsonParser {
     private static final Gson gson = new Gson();
 
     public static List<Category> parseCategories(Object data) {
         try {
+            if (data == null) return Collections.emptyList();
             if (data instanceof List) {
                 Type listType = new TypeToken<List<Category>>(){}.getType();
-                return gson.fromJson(gson.toJson(data), listType);
+                List<Category> result = gson.fromJson(gson.toJson(data), listType);
+                return result != null ? result : Collections.emptyList();
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return null;
+        return Collections.emptyList();
     }
 
     public static List<Product> parseProducts(Object data) {
         try {
+            if (data == null) return Collections.emptyList();
+            // If backend returns a Page object, extract content
+            if (data instanceof Map) {
+                Object content = ((Map<?, ?>) data).get("content");
+                if (content instanceof List) {
+                    Type listType = new TypeToken<List<Product>>(){}.getType();
+                    List<Product> pageList = gson.fromJson(gson.toJson(content), listType);
+                    return pageList != null ? pageList : Collections.emptyList();
+                }
+            }
             if (data instanceof List) {
                 Type listType = new TypeToken<List<Product>>(){}.getType();
-                return gson.fromJson(gson.toJson(data), listType);
+                List<Product> result = gson.fromJson(gson.toJson(data), listType);
+                return result != null ? result : Collections.emptyList();
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return null;
+        return Collections.emptyList();
     }
 
     public static Product parseProduct(Object data) {
@@ -63,11 +79,11 @@ public class JsonParser {
             android.util.Log.d("JsonParser", "parseProductOptions: data type: " + data.getClass().getSimpleName());
             String json = gson.toJson(data);
             android.util.Log.d("JsonParser", "parseProductOptions: raw json: " + json);
-            
+
             Type optionListType = new TypeToken<List<ProductOption>>() {}.getType();
             List<ProductOption> result = gson.fromJson(json, optionListType);
             android.util.Log.d("JsonParser", "parseProductOptions: parsed count: " + (result != null ? result.size() : 0));
-            
+
             // Log each parsed option
             if (result != null) {
                 for (int i = 0; i < result.size(); i++) {
@@ -75,7 +91,7 @@ public class JsonParser {
                     android.util.Log.d("JsonParser", "Parsed option " + i + ": " + option.toString());
                 }
             }
-            
+
             return result;
         } catch (Exception e) {
             android.util.Log.e("JsonParser", "parseProductOptions error: " + e.getMessage(), e);

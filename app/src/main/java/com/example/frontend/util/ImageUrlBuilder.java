@@ -1,7 +1,7 @@
 package com.example.frontend.util;
 
 public class ImageUrlBuilder {
-    private static final String BASE_URL = "http://10.0.2.2:8080";
+    private static final String BASE_URL = "http://192.168.1.2:8080";
 
     public static String buildFullUrl(String imageUrl) {
         if (imageUrl == null || imageUrl.isEmpty()) {

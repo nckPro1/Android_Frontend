@@ -126,21 +126,40 @@ public class ProductOptionsAdapter extends RecyclerView.Adapter<ProductOptionsAd
 
             // Set click listener
             itemView.setOnClickListener(v -> {
-                boolean wasSelected = selectedOptions.contains(option);
+                String optionType = option.getOptionType() != null ? option.getOptionType().toUpperCase() : "";
+                boolean isCurrentlySelected = selectedOptions.contains(option);
 
-                if (wasSelected) {
-                    selectedOptions.remove(option);
-                } else {
-                    // Check if we can select this option
-                    if (canSelectOption(option)) {
+                // For "SIZE", it's single choice. For others, it's multiple choice.
+                if ("SIZE".equals(optionType)) {
+                    // If a size is clicked, it becomes the only selected size.
+                    if (!isCurrentlySelected) {
+                        // Remove any other selected size from the list.
+                        java.util.Iterator<ProductOption> iterator = selectedOptions.iterator();
+                        while (iterator.hasNext()) {
+                            ProductOption selected = iterator.next();
+                            if ("SIZE".equals(selected.getOptionType().toUpperCase())) {
+                                iterator.remove();
+                            }
+                        }
+                        selectedOptions.add(option);
+                    }
+                    // Clicking an already selected size does nothing.
+                } else { // "TOPPING", "CUSTOMIZATION", etc.
+                    // Toggle selection.
+                    if (isCurrentlySelected) {
+                        selectedOptions.remove(option);
+                    } else {
                         selectedOptions.add(option);
                     }
                 }
 
-                notifyItemChanged(getAdapterPosition());
+                // Update the UI
+                notifyDataSetChanged();
 
+                // Notify the listener (e.g., to update total price)
                 if (listener != null) {
-                    listener.onOptionClick(option, !wasSelected);
+                    // We can just notify about the clicked option. The activity will recalculate the total.
+                    listener.onOptionClick(option, selectedOptions.contains(option));
                 }
             });
         }
@@ -165,29 +184,6 @@ public class ProductOptionsAdapter extends RecyclerView.Adapter<ProductOptionsAd
         private void updateSelectionState(boolean isSelected) {
             optionCard.setSelected(isSelected);
             ivOptionCheck.setVisibility(isSelected ? View.VISIBLE : View.GONE);
-        }
-
-        private boolean canSelectOption(ProductOption option) {
-            if (option.isRequired()) {
-                // For required options, only allow one selection per type
-                String optionType = option.getOptionType();
-                for (ProductOption selected : selectedOptions) {
-                    if (selected.getOptionType().equals(optionType)) {
-                        return false; // Already have one of this type
-                    }
-                }
-                return true;
-            } else {
-                // For optional options, check maxSelections
-                int currentCount = 0;
-                for (ProductOption selected : selectedOptions) {
-                    if (selected.getOptionType().equals(option.getOptionType())) {
-                        currentCount++;
-                    }
-                }
-                Integer maxSelections = option.getMaxSelections();
-                return maxSelections == null || currentCount < maxSelections;
-            }
         }
     }
 }

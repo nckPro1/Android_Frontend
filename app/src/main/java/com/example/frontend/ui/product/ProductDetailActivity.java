@@ -20,6 +20,7 @@ import com.example.frontend.model.Product;
 import com.example.frontend.model.ProductOption;
 import com.example.frontend.remote.ApiClient;
 import com.example.frontend.remote.ApiService;
+import com.example.frontend.ui.checkout.CheckoutActivity;
 import com.example.frontend.util.CartManager;
 import com.example.frontend.util.ImageUrlBuilder;
 import com.example.frontend.util.JsonParser;
@@ -55,7 +56,7 @@ public class ProductDetailActivity extends AppCompatActivity {
     private TextView tvAvailability;
     private TextView tvFeatured;
     private Button btnAddToCart;
-    private Button btnAddToFavorites;
+    private Button btnBuyNow;
     private RecyclerView rvProductOptions;
     private ProductOptionsAdapter productOptionsAdapter;
     private com.google.android.material.card.MaterialCardView optionsCardView;
@@ -130,7 +131,7 @@ public class ProductDetailActivity extends AppCompatActivity {
             tvAvailability = findViewById(R.id.tvAvailability);
             tvFeatured = findViewById(R.id.tvFeatured);
             btnAddToCart = findViewById(R.id.btnAddToCart);
-            btnAddToFavorites = findViewById(R.id.btnAddToFavorites);
+            btnBuyNow = findViewById(R.id.btnBuyNow);
             rvProductOptions = findViewById(R.id.rvProductOptions);
             optionsCardView = findViewById(R.id.optionsCardView);
             android.util.Log.d("ProductDetailActivity", "rvProductOptions: " + (rvProductOptions != null ? "FOUND" : "NOT FOUND"));
@@ -146,7 +147,7 @@ public class ProductDetailActivity extends AppCompatActivity {
 
             // Button click listeners
             btnAddToCart.setOnClickListener(v -> addToCart());
-            btnAddToFavorites.setOnClickListener(v -> addToFavorites());
+            btnBuyNow.setOnClickListener(v -> buyNow());
             android.util.Log.d("ProductDetailActivity", "Button click listeners set successfully");
         } catch (Exception e) {
             android.util.Log.e("ProductDetailActivity", "Error in setupViews: " + e.getMessage(), e);
@@ -504,9 +505,18 @@ public class ProductDetailActivity extends AppCompatActivity {
         }
     }
 
-    private void addToFavorites() {
-        Toast.makeText(this, "Đã thêm " + product.getName() + " vào yêu thích", Toast.LENGTH_SHORT).show();
-        // TODO: Implement add to favorites functionality
+    private void buyNow() {
+        if (product == null) {
+            Toast.makeText(this, "Sản phẩm không tồn tại", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Add to cart first
+        addToCart();
+
+        // Then navigate to CheckoutActivity
+        Intent intent = new Intent(this, CheckoutActivity.class);
+        startActivity(intent);
     }
 
     private void applyAnimations() {
@@ -527,7 +537,7 @@ public class ProductDetailActivity extends AppCompatActivity {
         Animation slideInButtons = AnimationUtils.loadAnimation(this, R.anim.slide_in_bottom);
         slideInButtons.setStartOffset(300);
         btnAddToCart.startAnimation(slideInButtons);
-        btnAddToFavorites.startAnimation(slideInButtons);
+        btnBuyNow.startAnimation(slideInButtons);
     }
 
     private void showError(String message) {

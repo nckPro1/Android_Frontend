@@ -44,6 +44,13 @@ public class Coupon {
     @SerializedName("usedCount")
     private Integer usedCount;
 
+    // From backend CouponDTO validation response
+    @SerializedName("canUse")
+    private Boolean canUse;
+
+    @SerializedName("message")
+    private String message;
+
     // Constructors
     public Coupon() {}
 
@@ -61,6 +68,9 @@ public class Coupon {
     public Boolean getIsActive() { return isActive; }
     public Integer getUsageLimit() { return usageLimit; }
     public Integer getUsedCount() { return usedCount; }
+    public Boolean getCanUse() { return canUse; }
+    public boolean isCanUse() { return canUse != null && canUse; }
+    public String getMessage() { return message; }
 
     // Setters
     public void setCouponId(Long couponId) { this.couponId = couponId; }
@@ -76,6 +86,8 @@ public class Coupon {
     public void setIsActive(Boolean isActive) { this.isActive = isActive; }
     public void setUsageLimit(Integer usageLimit) { this.usageLimit = usageLimit; }
     public void setUsedCount(Integer usedCount) { this.usedCount = usedCount; }
+    public void setCanUse(Boolean canUse) { this.canUse = canUse; }
+    public void setMessage(String message) { this.message = message; }
 
     // Helper methods
     public boolean isActive() {
@@ -104,6 +116,8 @@ public class Coupon {
                 ", discountType='" + discountType + '\'' +
                 ", discountValue=" + discountValue +
                 ", isActive=" + isActive +
+                ", canUse=" + canUse +
+                ", message='" + message + '\'' +
                 '}';
     }
 }

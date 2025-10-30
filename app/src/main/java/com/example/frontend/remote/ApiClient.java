@@ -12,8 +12,8 @@ import retrofit2.converter.gson.GsonConverterFactory;
 public class ApiClient {
 
 
-    // - Dùng máy ảo : Dùng "http://10.0.2.2:8080".
-    public static final String BASE_URL = "http://10.0.2.2:8080"; // IP máy thật
+    // Dùng thiết bị thật trên cùng Wi-Fi với backend
+    public static final String BASE_URL = "http://192.168.1.2:8080"; // IP máy thật
 
     private static Retrofit retrofit = null;
 

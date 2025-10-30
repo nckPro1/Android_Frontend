@@ -389,9 +389,23 @@
         android:elevation="4dp">
 
         <Button
-            android:id="@+id/buttonBackToHome"
-            android:layout_width="match_parent"
+            android:id="@+id/buttonCancelOrder"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Hủy đơn hàng"
+            android:textColor="@color/white"
+            android:background="@drawable/button_primary"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/buttonBackToHome"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="12dp"
             android:text="Về trang chủ"
             android:textColor="@color/white"
             android:background="@drawable/button_primary"

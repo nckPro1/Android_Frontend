@@ -140,7 +140,9 @@ public class Product {
             if (salePrice != null) {
                 return salePrice;
             } else if (salePercentage != null) {
-                return price.multiply(BigDecimal.valueOf(100 - salePercentage)).divide(BigDecimal.valueOf(100));
+                // FIX lỗi chia số không kết thúc:
+                return price.multiply(BigDecimal.valueOf(100 - salePercentage))
+                        .divide(BigDecimal.valueOf(100), 0, java.math.RoundingMode.DOWN);
             }
         }
         return price;
@@ -192,7 +194,8 @@ public class Product {
                 return salePercentage;
             } else if (salePrice != null) {
                 BigDecimal discount = getDiscountAmount();
-                return discount.multiply(BigDecimal.valueOf(100)).divide(price).intValue();
+                // FIX luôn truyền scale & rounding:
+                return discount.multiply(BigDecimal.valueOf(100)).divide(price, 0, java.math.RoundingMode.DOWN).intValue();
             }
         }
         return 0;

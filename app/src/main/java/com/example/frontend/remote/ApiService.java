@@ -18,8 +18,14 @@ import com.example.frontend.model.Order;
 import com.example.frontend.model.ShippingFeeInfo;
 import com.example.frontend.model.StoreInfo;
 import com.example.frontend.model.UserDto;
+import com.example.frontend.model.PaymentMethod;
+import com.example.frontend.model.CreatePaymentRequest;
+import com.example.frontend.model.PaymentDTO;
+import com.example.frontend.model.CreateVnpayPaymentRequest;
+import com.example.frontend.model.VnpayPaymentResponse;
 
 import java.util.List;
+import java.util.Map;
 
 import okhttp3.MultipartBody;
 import retrofit2.Call;
@@ -114,7 +120,7 @@ public interface ApiService {
 
     // ✅ Tìm kiếm products
     @GET("/api/products/search")
-    Call<ApiResponse> searchProducts(@Query("query") String query);
+    Call<ApiResponse> searchProducts(@Query("keyword") String query);
 
     // ✅ Lấy product options
     @GET("/api/products/{productId}/options")
@@ -140,9 +146,12 @@ public interface ApiService {
     @GET("/api/coupons/active")
     Call<ApiResponse> getActiveCoupons();
 
-    // ✅ Validate coupon code
+    // ✅ Validate coupon code with current order amount (subtotal)
     @GET("/api/coupons/validate/{couponCode}")
-    Call<com.example.frontend.model.Coupon> validateCoupon(@Path("couponCode") String couponCode);
+    Call<com.example.frontend.model.Coupon> validateCoupon(
+            @Path("couponCode") String couponCode,
+            @retrofit2.http.Query("orderAmount") java.math.BigDecimal orderAmount
+    );
 
     // ===============================
     // ORDER ENDPOINTS
@@ -179,10 +188,18 @@ public interface ApiService {
     Call<ApiResponse<List<Order>>> getOrdersByUserId(@Header("Authorization") String token, @Path("userId") Long userId);
 
     /**
+     * Hủy đơn hàng
+     */
+    @PUT("api/orders/{orderId}/cancel")
+    Call<ApiResponse<Order>> cancelOrder(@Header("Authorization") String token, @Path("orderId") Long orderId);
+
+    /**
      * Lấy thông tin phí ship từ database
      */
     @GET("/api/orders/shipping-fee")
     Call<ApiResponse<ShippingFeeInfo>> getShippingFeeInfo();
+
+
 
     // ===============================
     // ADDRESS & LOCATION ENDPOINTS - REMOVED (simplified to manual input)
@@ -206,6 +223,42 @@ public interface ApiService {
      */
     @GET("/api/shipping-fee/default")
     Call<ApiResponse<ShippingFeeInfo>> getDefaultShippingFeeInfo();
+
+    // ===============================
+    // PAYMENT ENDPOINTS
+    // ===============================
+
+    /**
+     * Lấy danh sách phương thức thanh toán
+     */
+    @GET("/api/payment/methods")
+    Call<ApiResponse<List<PaymentMethod>>> getPaymentMethods();
+
+    /**
+     * Tạo thanh toán cho đơn hàng
+     */
+    @POST("/api/payment/create")
+    Call<ApiResponse<Object>> createPayment(@Header("Authorization") String token, @Body CreatePaymentRequest request);
+
+    /**
+     * Tạo thanh toán VNPay (sandbox)
+     */
+    @POST("/api/payment/create-payment")
+    Call<ApiResponse<VnpayPaymentResponse>> createVnpayPayment(
+            @Header("Authorization") String token,
+            @Body CreateVnpayPaymentRequest request);
+
+    /**
+     * Lấy thông tin thanh toán theo ID
+     */
+    @GET("/api/payment/{paymentId}")
+    Call<ApiResponse<PaymentDTO>> getPaymentById(@Header("Authorization") String token, @Path("paymentId") Long paymentId);
+
+    /**
+     * Lấy thông tin thanh toán theo order ID
+     */
+    @GET("/api/payment/order/{orderId}")
+    Call<ApiResponse<PaymentDTO>> getPaymentByOrderId(@Header("Authorization") String token, @Path("orderId") Long orderId);
 
     // DTOs for API requests
     class DeliveryLocationRequest {

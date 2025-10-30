@@ -47,6 +47,7 @@ public class OrderDetailActivity extends AppCompatActivity {
     private TextView textViewTotalAmount;
     private RecyclerView recyclerViewOrderItems;
     private Button buttonBackToHome;
+    private Button buttonCancelOrder;
     private ProgressBar progressBar;
 
     private TokenManager tokenManager;
@@ -91,12 +92,13 @@ public class OrderDetailActivity extends AppCompatActivity {
         textViewTotalAmount = findViewById(R.id.textViewTotalAmount);
         recyclerViewOrderItems = findViewById(R.id.recyclerViewOrderItems);
         buttonBackToHome = findViewById(R.id.buttonBackToHome);
+        buttonCancelOrder = findViewById(R.id.buttonCancelOrder);
         progressBar = findViewById(R.id.progressBar);
     }
 
     private void initData() {
         apiService = ApiClient.getApiService();
-        
+
         // Setup RecyclerView
         orderDetailAdapter = new OrderDetailAdapter(orderItems);
         recyclerViewOrderItems.setLayoutManager(new LinearLayoutManager(this));
@@ -105,19 +107,23 @@ public class OrderDetailActivity extends AppCompatActivity {
 
     private void setupListeners() {
         imageViewBack.setOnClickListener(v -> finish());
-        
+
         buttonBackToHome.setOnClickListener(v -> {
             Intent intent = new Intent(this, com.example.frontend.ui.home.HomeActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(intent);
             finish();
         });
+
+        if (buttonCancelOrder != null) {
+            buttonCancelOrder.setOnClickListener(v -> performCancelOrder());
+        }
     }
 
     private void loadOrderDetail() {
         Intent intent = getIntent();
         orderId = intent.getLongExtra("orderId", -1);
-        
+
         if (orderId == -1) {
             Toast.makeText(this, "Không tìm thấy thông tin đơn hàng", Toast.LENGTH_SHORT).show();
             finish();
@@ -125,7 +131,7 @@ public class OrderDetailActivity extends AppCompatActivity {
         }
 
         progressBar.setVisibility(View.VISIBLE);
-        
+
         String token = tokenManager.getAccessToken();
         if (token == null) {
             Toast.makeText(this, "Token không hợp lệ, vui lòng đăng nhập lại", Toast.LENGTH_SHORT).show();
@@ -137,14 +143,14 @@ public class OrderDetailActivity extends AppCompatActivity {
         }
 
         Log.d("OrderDetailActivity", "Loading order detail for orderId: " + orderId);
-        
+
         apiService.getOrderById("Bearer " + token, orderId).enqueue(new Callback<ApiResponse<Order>>() {
             @Override
             public void onResponse(Call<ApiResponse<Order>> call, Response<ApiResponse<Order>> response) {
                 progressBar.setVisibility(View.GONE);
-                
+
                 Log.d("OrderDetailActivity", "Response code: " + response.code());
-                
+
                 if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                     Order order = response.body().getData();
                     displayOrderDetail(order);
@@ -172,7 +178,7 @@ public class OrderDetailActivity extends AppCompatActivity {
         textViewOrderStatus.setText(getOrderStatusDisplay(order.getOrderStatus()));
         textViewPaymentStatus.setText(getPaymentStatusDisplay(order.getPaymentStatus()));
         textViewPaymentMethod.setText(getPaymentMethodDisplay(order.getPaymentMethod()));
-        
+
         // Delivery info
         textViewDeliveryAddress.setText(order.getDeliveryAddress());
         if (order.getDeliveryNotes() != null && !order.getDeliveryNotes().isEmpty()) {
@@ -181,21 +187,27 @@ public class OrderDetailActivity extends AppCompatActivity {
         } else {
             textViewDeliveryNotes.setVisibility(View.GONE);
         }
-        
+
         // Estimated delivery time
         if (order.getEstimatedDeliveryTime() != null) {
-            textViewEstimatedDeliveryTime.setText("Dự kiến giao hàng: " + 
-                order.getEstimatedDeliveryTime().toString().replace("T", " "));
+            textViewEstimatedDeliveryTime.setText("Dự kiến giao hàng: " +
+                    order.getEstimatedDeliveryTime().toString().replace("T", " "));
         } else {
             textViewEstimatedDeliveryTime.setVisibility(View.GONE);
         }
-        
+
         // Amounts
         textViewSubtotal.setText(PriceFormatter.format(order.getTotalAmount()));
         textViewShippingFee.setText(PriceFormatter.format(order.getShippingFee()));
         textViewDiscount.setText(PriceFormatter.format(order.getDiscountAmount() != null ? order.getDiscountAmount() : java.math.BigDecimal.ZERO));
         textViewTotalAmount.setText(PriceFormatter.format(order.getFinalAmount()));
-        
+
+        // Toggle cancel button visibility
+        if (buttonCancelOrder != null) {
+            boolean canCancel = order != null && (order.getOrderStatus() == Order.OrderStatus.PENDING || order.getOrderStatus() == Order.OrderStatus.CONFIRMED);
+            buttonCancelOrder.setVisibility(canCancel ? View.VISIBLE : View.GONE);
+        }
+
         // Order items
         if (order.getOrderItems() != null) {
             orderItems.clear();
@@ -204,9 +216,39 @@ public class OrderDetailActivity extends AppCompatActivity {
         }
     }
 
+    private void performCancelOrder() {
+        if (orderId == null) return;
+        String token = tokenManager.getAccessToken();
+        if (token == null || token.isEmpty()) {
+            Toast.makeText(this, "Token không hợp lệ", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        progressBar.setVisibility(View.VISIBLE);
+        apiService.cancelOrder("Bearer " + token, orderId).enqueue(new Callback<ApiResponse<Order>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<Order>> call, Response<ApiResponse<Order>> response) {
+                progressBar.setVisibility(View.GONE);
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    Toast.makeText(OrderDetailActivity.this, "Đã hủy đơn hàng", Toast.LENGTH_SHORT).show();
+                    // Reload details
+                    loadOrderDetail();
+                } else {
+                    String msg = response.body() != null ? response.body().getMessage() : "Hủy đơn thất bại";
+                    Toast.makeText(OrderDetailActivity.this, msg, Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ApiResponse<Order>> call, Throwable t) {
+                progressBar.setVisibility(View.GONE);
+                Toast.makeText(OrderDetailActivity.this, "Lỗi hủy đơn: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
     private String getOrderStatusDisplay(Order.OrderStatus status) {
         if (status == null) return "Không xác định";
-        
+
         switch (status) {
             case PENDING: return "Chờ xử lý";
             case CONFIRMED: return "Đã nhận";
@@ -218,7 +260,7 @@ public class OrderDetailActivity extends AppCompatActivity {
 
     private String getPaymentStatusDisplay(Order.PaymentStatus status) {
         if (status == null) return "Không xác định";
-        
+
         switch (status) {
             case PENDING: return "Chờ thanh toán";
             case COMPLETED: return "Đã thanh toán";
@@ -230,7 +272,7 @@ public class OrderDetailActivity extends AppCompatActivity {
 
     private String getPaymentMethodDisplay(Order.PaymentMethod method) {
         if (method == null) return "Không xác định";
-        
+
         switch (method) {
             case CASH: return "Tiền mặt";
             case CARD: return "Thẻ";

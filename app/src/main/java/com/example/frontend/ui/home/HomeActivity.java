@@ -3,6 +3,8 @@ package com.example.frontend.ui.home;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.TextView;
@@ -11,6 +13,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.appcompat.widget.SearchView;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.frontend.R;
@@ -48,6 +51,9 @@ public class HomeActivity extends AppCompatActivity {
     private RecyclerView rvPopularDishes;
     private ProductAdapter productAdapter;
     private List<Product> products;
+    private SearchView searchView;
+    private final Handler searchHandler = new Handler(Looper.getMainLooper());
+    private Runnable pendingSearch;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -88,6 +94,7 @@ public class HomeActivity extends AppCompatActivity {
         TextView tvSeeAllCategories = findViewById(R.id.tvSeeAllCategories);
         TextView tvSeeAllProducts = findViewById(R.id.tvSeeAllProducts);
         rvPopularDishes = findViewById(R.id.rv_popular_dishes);
+        searchView = findViewById(R.id.search_view);
 
         // Initialize API service
         apiService = ApiClient.getApiService();
@@ -98,11 +105,29 @@ public class HomeActivity extends AppCompatActivity {
         rvCategories.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
         rvCategories.setAdapter(categoryAdapter);
 
-        // Initialize products list and adapter
+        // Initialize products list and adapter (Popular Dishes - horizontal)
         products = new ArrayList<>();
         productAdapter = new ProductAdapter(products, null); // Không cần listener vì ProductAdapter tự xử lý
-        rvPopularDishes.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
+        rvPopularDishes.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
+        rvPopularDishes.setHasFixedSize(true);
         rvPopularDishes.setAdapter(productAdapter);
+
+        // Search wiring -> open SearchResultsActivity on submit
+        if (searchView != null) {
+            searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+                @Override
+                public boolean onQueryTextSubmit(String query) {
+                    openSearchResults(query);
+                    return true;
+                }
+
+                @Override
+                public boolean onQueryTextChange(String newText) {
+                    // optional: could show suggestions here; do nothing
+                    return true;
+                }
+            });
+        }
 
         // Setup See All click listeners
         tvSeeAllCategories.setOnClickListener(v -> {
@@ -129,10 +154,10 @@ public class HomeActivity extends AppCompatActivity {
                 return true;
             } else if (itemId == R.id.nav_cart) {
                 // Navigate to Cart Activity
-                startActivity(new Intent(HomeActivity.this, CartActivity.class));
+                startActivity(new Intent(HomeActivity.this, com.example.frontend.ui.cart.CartActivity.class));
                 return true;
             } else if (itemId == R.id.nav_profile) {
-                startActivity(new Intent(HomeActivity.this, ProfileActivity.class));
+                startActivity(new Intent(HomeActivity.this, com.example.frontend.ui.profile.ProfileActivity.class));
                 return true;
             } else if (itemId == R.id.nav_about) {
                 Toast.makeText(this, "About - Coming soon!", Toast.LENGTH_SHORT).show();
@@ -140,6 +165,14 @@ public class HomeActivity extends AppCompatActivity {
             }
             return false;
         });
+    }
+
+    private void openSearchResults(String rawQuery) {
+        String q = rawQuery == null ? "" : rawQuery.trim();
+        if (q.isEmpty()) return;
+        Intent intent = new Intent(this, com.example.frontend.ui.search.SearchResultsActivity.class);
+        intent.putExtra("query", q);
+        startActivity(intent);
     }
 
     private void loadUserInfo() {

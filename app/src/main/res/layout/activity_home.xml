@@ -192,8 +192,9 @@
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rv_popular_dishes"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                android:layout_height="220dp"
+                android:overScrollMode="never"
+                android:nestedScrollingEnabled="false"
                 tools:listitem="@layout/item_popular_dish"/>
 
         </LinearLayout>

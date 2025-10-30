@@ -35,6 +35,9 @@ import com.example.frontend.ui.auth.login.LoginActivity;
 import com.example.frontend.util.CartManager;
 import com.example.frontend.util.PriceFormatter;
 import com.example.frontend.local.TokenManager;
+import com.example.frontend.model.CreateVnpayPaymentRequest;
+import com.example.frontend.model.VnpayPaymentResponse;
+import android.net.Uri;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -75,7 +78,8 @@ public class CheckoutActivity extends AppCompatActivity {
     private BigDecimal shippingFee;
     private BigDecimal discount;
     private BigDecimal total;
-    private String appliedCouponCode;
+    private List<String> appliedCouponCodes = new ArrayList<>();
+    private List<com.example.frontend.model.Coupon> appliedCouponObjs = new ArrayList<>();
     private TokenManager tokenManager;
     private CartManager cartManager;
     private ApiService apiService;
@@ -217,10 +221,50 @@ public class CheckoutActivity extends AppCompatActivity {
     private BigDecimal calculateSubtotal() {
         BigDecimal total = BigDecimal.ZERO;
         for (CartItem item : cartItems) {
-            BigDecimal itemTotal = item.getCurrentPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
-            total = total.add(itemTotal);
+            // Use sale price if available; otherwise unit price
+            BigDecimal priceToUse = item.getSalePrice() != null && item.getSalePrice().compareTo(BigDecimal.ZERO) > 0
+                    ? item.getSalePrice()
+                    : (item.getUnitPrice() != null ? item.getUnitPrice() : BigDecimal.ZERO);
+
+            // Base price for quantity
+            BigDecimal lineTotal = priceToUse.multiply(BigDecimal.valueOf(item.getQuantity()));
+
+            // Add selected options price per unit times quantity
+            if (item.getSelectedOptions() != null) {
+                BigDecimal optionsPerUnit = BigDecimal.ZERO;
+                for (com.example.frontend.model.ProductOption option : item.getSelectedOptions()) {
+                    if (option.getPrice() != null) {
+                        optionsPerUnit = optionsPerUnit.add(option.getPrice());
+                    }
+                }
+                lineTotal = lineTotal.add(optionsPerUnit.multiply(BigDecimal.valueOf(item.getQuantity())));
+            }
+
+            total = total.add(lineTotal);
         }
         subtotal = total; // Update field for other uses
+        return total;
+    }
+
+    // Subtotal based on original unit prices (for coupon validation/calculation)
+    private BigDecimal calculateBaseSubtotalOriginal() {
+        BigDecimal total = BigDecimal.ZERO;
+        for (CartItem item : cartItems) {
+            BigDecimal priceToUse = (item.getUnitPrice() != null ? item.getUnitPrice() : BigDecimal.ZERO);
+            BigDecimal lineTotal = priceToUse.multiply(BigDecimal.valueOf(item.getQuantity()));
+
+            if (item.getSelectedOptions() != null) {
+                BigDecimal optionsPerUnit = BigDecimal.ZERO;
+                for (com.example.frontend.model.ProductOption option : item.getSelectedOptions()) {
+                    if (option.getPrice() != null) {
+                        optionsPerUnit = optionsPerUnit.add(option.getPrice());
+                    }
+                }
+                lineTotal = lineTotal.add(optionsPerUnit.multiply(BigDecimal.valueOf(item.getQuantity())));
+            }
+
+            total = total.add(lineTotal);
+        }
         return total;
     }
 
@@ -314,8 +358,8 @@ public class CheckoutActivity extends AppCompatActivity {
         orderRequest.setPaymentMethod(paymentMethod);
 
         // Add coupon code if applied
-        if (appliedCouponCode != null) {
-            orderRequest.setCouponCode(appliedCouponCode);
+        if (!appliedCouponCodes.isEmpty()) {
+            orderRequest.setCouponCodes(appliedCouponCodes);
         }
 
         // Convert cart items to order items
@@ -338,7 +382,7 @@ public class CheckoutActivity extends AppCompatActivity {
         }
         orderRequest.setOrderItems(orderItems);
 
-        Log.d("CheckoutActivity", "📤 Sending order request with couponCode: " + orderRequest.getCouponCode());
+        Log.d("CheckoutActivity", "📤 Sending order request with couponCodes: " + (orderRequest.getCouponCodes() != null ? orderRequest.getCouponCodes().toString() : "[]"));
 
         // Show loading
         showLoading(true);
@@ -352,14 +396,19 @@ public class CheckoutActivity extends AppCompatActivity {
                 if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                     Order order = response.body().getData();
 
-                    // Clear cart
-                    cartManager.clearCart();
-
-                    // Navigate to success page
-                    Intent intent = new Intent(CheckoutActivity.this, OrderSuccessActivity.class);
-                    intent.putExtra("order", order);
-                    startActivity(intent);
-                    finish();
+                    // Route based on payment method
+                    // Cart sẽ được clear SAU KHI thanh toán thành công
+                    String selectedPaymentMethod = getSelectedPaymentMethod();
+                    if ("CASH".equals(selectedPaymentMethod)) {
+                        // For cash payment, go directly to success page
+                        handleCashPayment(order);
+                    } else if ("E_WALLET".equals(selectedPaymentMethod)) {
+                        // Treat E_WALLET as VNPay for demo sandbox
+                        handleVnpayPayment(order);
+                    } else {
+                        // For other payment methods, show error
+                        Toast.makeText(CheckoutActivity.this, "Chỉ hỗ trợ thanh toán tiền mặt", Toast.LENGTH_SHORT).show();
+                    }
                 } else {
                     String errorMessage = response.body() != null ? response.body().getMessage() : "Lỗi tạo đơn hàng";
                     Toast.makeText(CheckoutActivity.this, errorMessage, Toast.LENGTH_SHORT).show();
@@ -401,44 +450,34 @@ public class CheckoutActivity extends AppCompatActivity {
             Toast.makeText(this, "Vui lòng nhập mã giảm giá", Toast.LENGTH_SHORT).show();
             return;
         }
-
+        if (appliedCouponCodes.contains(couponCode)) {
+            Toast.makeText(this, "Mã này đã được áp dụng rồi!", Toast.LENGTH_SHORT).show();
+            return;
+        }
         showLoading(true);
-        Call<com.example.frontend.model.Coupon> call = apiService.validateCoupon(couponCode);
+        // Validate against original-price subtotal (not sale/current price)
+        BigDecimal baseSubtotal = calculateBaseSubtotalOriginal();
+        Call<com.example.frontend.model.Coupon> call = apiService.validateCoupon(couponCode, baseSubtotal);
         call.enqueue(new Callback<com.example.frontend.model.Coupon>() {
             @Override
             public void onResponse(Call<com.example.frontend.model.Coupon> call, Response<com.example.frontend.model.Coupon> response) {
                 showLoading(false);
                 if (response.isSuccessful() && response.body() != null) {
                     com.example.frontend.model.Coupon coupon = response.body();
-                    appliedCouponCode = couponCode;
-
-                    // Calculate discount based on discount type
-                    BigDecimal subtotal = calculateSubtotal();
-                    if (coupon.isPercentageDiscount()) {
-                        // Percentage discount: discountValue is percentage (e.g., 20 for 20%)
-                        discount = subtotal.multiply(coupon.getDiscountValue()).divide(BigDecimal.valueOf(100));
-                    } else {
-                        // Fixed amount discount: discountValue is the amount to subtract
-                        discount = coupon.getDiscountValue();
+                    if (!coupon.isCanUse()) {
+                        Toast.makeText(CheckoutActivity.this, coupon.getMessage(), Toast.LENGTH_SHORT).show();
+                        return;
                     }
-
-                    // Show applied coupon UI
-                    layoutAppliedCoupon.setVisibility(View.VISIBLE);
-                    textViewCouponDiscount.setText("-" + PriceFormatter.format(discount));
-
-                    // Hide coupon input
-                    editTextCouponCode.setVisibility(View.GONE);
-                    buttonApplyCoupon.setVisibility(View.GONE);
-
-                    // Recalculate shipping fee based on new subtotal (subtotal hasn't changed, but we need to refresh)
-                    calculateShippingFee();
-
+                    appliedCouponCodes.add(couponCode);
+                    appliedCouponObjs.add(coupon);
+                    updateDiscountTotal();
+                    updateCouponsUI();
+                    editTextCouponCode.setText("");
                     Toast.makeText(CheckoutActivity.this, "Áp dụng mã giảm giá thành công", Toast.LENGTH_SHORT).show();
                 } else {
                     Toast.makeText(CheckoutActivity.this, "Mã giảm giá không hợp lệ", Toast.LENGTH_SHORT).show();
                 }
             }
-
             @Override
             public void onFailure(Call<com.example.frontend.model.Coupon> call, Throwable t) {
                 showLoading(false);
@@ -448,20 +487,146 @@ public class CheckoutActivity extends AppCompatActivity {
     }
 
     private void removeCoupon() {
-        appliedCouponCode = null;
-        discount = BigDecimal.ZERO;
-
-        // Hide applied coupon UI
-        layoutAppliedCoupon.setVisibility(View.GONE);
-
-        // Show coupon input
-        editTextCouponCode.setVisibility(View.VISIBLE);
-        buttonApplyCoupon.setVisibility(View.VISIBLE);
-        editTextCouponCode.setText("");
-
-        // Recalculate shipping fee
-        calculateShippingFee();
-
+        if (!appliedCouponCodes.isEmpty()) {
+            appliedCouponCodes.clear();
+            appliedCouponObjs.clear();
+            updateDiscountTotal();
+            updateCouponsUI();
+        }
         Toast.makeText(this, "Đã xóa mã giảm giá", Toast.LENGTH_SHORT).show();
     }
+
+    private void updateDiscountTotal() {
+        // Display subtotal uses sale price; coupon discount must be computed on original-price subtotal
+        BigDecimal displaySubtotal = calculateSubtotal();
+        BigDecimal baseSubtotal = calculateBaseSubtotalOriginal();
+
+        discount = BigDecimal.ZERO;
+        for (com.example.frontend.model.Coupon c : appliedCouponObjs) {
+            BigDecimal thisDiscount;
+            if (c.isPercentageDiscount()) {
+                thisDiscount = baseSubtotal.multiply(c.getDiscountValue()).divide(BigDecimal.valueOf(100));
+            } else {
+                thisDiscount = (c.getDiscountValue() != null ? c.getDiscountValue() : BigDecimal.ZERO);
+            }
+            if (thisDiscount.compareTo(BigDecimal.ZERO) > 0) {
+                discount = discount.add(thisDiscount);
+            }
+        }
+        if (discount.compareTo(baseSubtotal) > 0) discount = baseSubtotal;
+        textViewDiscount.setText(PriceFormatter.format(discount));
+        total = displaySubtotal.add(shippingFee).subtract(discount);
+        if (total.compareTo(BigDecimal.ZERO) < 0) total = BigDecimal.ZERO;
+        textViewTotal.setText(PriceFormatter.format(total));
+    }
+
+    private void updateCouponsUI() {
+        layoutAppliedCoupon.removeAllViews();
+        for (int i = 0; i < appliedCouponCodes.size(); i++) {
+            String code = appliedCouponCodes.get(i);
+            TextView tv = new TextView(this);
+            tv.setText("- " + code);
+            tv.setOnClickListener(v -> {
+                int idx = appliedCouponCodes.indexOf(code);
+                if (idx >= 0) {
+                    appliedCouponCodes.remove(idx);
+                    appliedCouponObjs.remove(idx);
+                    updateDiscountTotal();
+                    updateCouponsUI();
+                }
+            });
+            layoutAppliedCoupon.addView(tv);
+        }
+        if (appliedCouponCodes.isEmpty()) {
+            layoutAppliedCoupon.setVisibility(View.GONE);
+        } else {
+            layoutAppliedCoupon.setVisibility(View.VISIBLE);
+        }
+    }
+
+    /**
+     * Xử lý thanh toán tiền mặt - chuyển thẳng đến trang thành công
+     */
+    private void handleCashPayment(Order order) {
+        // Tạo request thanh toán tiền mặt
+        com.example.frontend.model.CreatePaymentRequest paymentRequest = new com.example.frontend.model.CreatePaymentRequest();
+        paymentRequest.setOrderId(order.getOrderId());
+        paymentRequest.setPaymentMethod("CASH"); // Đổi từ setPaymentMethodCode -> setPaymentMethod
+        paymentRequest.setAmount(order.getFinalAmount());
+        paymentRequest.setDescription("Thanh toán tiền mặt cho đơn hàng " + order.getOrderNumber());
+
+        // Gọi API tạo thanh toán tiền mặt
+        Call<ApiResponse<Object>> call = apiService.createPayment("Bearer " + tokenManager.getAccessToken(), paymentRequest);
+        call.enqueue(new Callback<ApiResponse<Object>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<Object>> call, Response<ApiResponse<Object>> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    // Clear cart sau khi thanh toán tiền mặt thành công
+                    cartManager.clearCart();
+
+                    // Chuyển đến trang đặt hàng thành công
+                    Intent intent = new Intent(CheckoutActivity.this, OrderSuccessActivity.class);
+                    intent.putExtra("orderNumber", order.getOrderNumber());
+                    intent.putExtra("totalAmount", order.getFinalAmount().toString());
+                    intent.putExtra("paymentMethod", "Tiền mặt khi nhận hàng");
+                    intent.putExtra("orderId", order.getOrderId());
+                    intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(intent);
+                    finish();
+                } else {
+                    String errorMessage = response.body() != null ? response.body().getMessage() : "Lỗi tạo thanh toán";
+                    Toast.makeText(CheckoutActivity.this, errorMessage, Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ApiResponse<Object>> call, Throwable t) {
+                Log.e("CheckoutActivity", "Error creating cash payment: " + t.getMessage(), t);
+                Toast.makeText(CheckoutActivity.this, "Lỗi tạo thanh toán: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    /**
+     * Khởi tạo thanh toán VNPay (sandbox): gọi backend lấy paymentUrl và mở trình duyệt
+     */
+    private void handleVnpayPayment(Order order) {
+        // Build request
+        long amountVnd = order.getFinalAmount() != null ? order.getFinalAmount().longValue() : 0L;
+        CreateVnpayPaymentRequest req = new CreateVnpayPaymentRequest();
+        req.setOrderId(order.getOrderId());
+        req.setAmount(amountVnd);
+        req.setOrderInfo("Thanh toan don hang " + order.getOrderNumber());
+        req.setIpAddr(null); // backend sẽ tự lấy IP từ request
+
+        showLoading(true);
+        Call<ApiResponse<VnpayPaymentResponse>> call = apiService.createVnpayPayment(
+                "Bearer " + tokenManager.getAccessToken(),
+                req);
+        call.enqueue(new Callback<ApiResponse<VnpayPaymentResponse>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<VnpayPaymentResponse>> call, Response<ApiResponse<VnpayPaymentResponse>> response) {
+                showLoading(false);
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess() && response.body().getData() != null) {
+                    String paymentUrl = response.body().getData().getPaymentUrl();
+                    Intent intent = new Intent(CheckoutActivity.this, VnpayWebViewActivity.class);
+                    intent.putExtra(VnpayWebViewActivity.EXTRA_PAYMENT_URL, paymentUrl);
+                    intent.putExtra(VnpayWebViewActivity.EXTRA_ORDER_ID, order.getOrderId());
+                    intent.putExtra(VnpayWebViewActivity.EXTRA_ORDER_NUMBER, order.getOrderNumber());
+                    intent.putExtra(VnpayWebViewActivity.EXTRA_TOTAL_AMOUNT, order.getFinalAmount() != null ? order.getFinalAmount().toString() : null);
+                    startActivity(intent);
+                } else {
+                    String msg = response.body() != null ? response.body().getMessage() : "Lỗi tạo thanh toán VNPay";
+                    Toast.makeText(CheckoutActivity.this, msg, Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ApiResponse<VnpayPaymentResponse>> call, Throwable t) {
+                showLoading(false);
+                Toast.makeText(CheckoutActivity.this, "Lỗi gọi VNPay: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
 }

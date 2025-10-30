@@ -129,6 +129,29 @@
             android:exported="false"
             android:label="Đặt hàng thành công"/>
 
+        <!-- Search Results -->
+        <activity
+            android:name=".ui.search.SearchResultsActivity"
+            android:exported="false"
+            android:label="Kết quả tìm kiếm"/>
+
+        <!-- Payment Activities -->
+        <activity
+            android:name=".ui.payment.PaymentMethodActivity"
+            android:exported="false"
+            android:label="Chọn phương thức thanh toán"/>
+
+        <activity
+            android:name=".ui.payment.PaymentSuccessActivity"
+            android:exported="false"
+            android:label="Kết quả thanh toán"/>
+
+        <activity
+            android:name=".ui.checkout.VnpayWebViewActivity"
+            android:exported="false"
+            android:label="Thanh toán VNPay"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"/>
+
         <!-- File Provider for sharing files -->
         <provider
             android:name="androidx.core.content.FileProvider"
