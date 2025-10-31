@@ -13,7 +13,7 @@ public class ApiClient {
 
 
     // Dùng thiết bị thật trên cùng Wi-Fi với backend
-    public static final String BASE_URL = "http://192.168.1.2:8080"; // IP máy thật
+    public static final String BASE_URL = "http://192.168.1.3:8080"; // IP máy thật
 
     private static Retrofit retrofit = null;
 

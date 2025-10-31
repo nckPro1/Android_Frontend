@@ -563,7 +563,7 @@ public class CheckoutActivity extends AppCompatActivity {
                 if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                     // Clear cart sau khi thanh toán tiền mặt thành công
                     cartManager.clearCart();
-
+                    
                     // Chuyển đến trang đặt hàng thành công
                     Intent intent = new Intent(CheckoutActivity.this, OrderSuccessActivity.class);
                     intent.putExtra("orderNumber", order.getOrderNumber());

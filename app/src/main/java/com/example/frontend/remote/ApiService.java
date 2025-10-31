@@ -199,7 +199,7 @@ public interface ApiService {
     @GET("/api/orders/shipping-fee")
     Call<ApiResponse<ShippingFeeInfo>> getShippingFeeInfo();
 
-
+    
 
     // ===============================
     // ADDRESS & LOCATION ENDPOINTS - REMOVED (simplified to manual input)
@@ -311,4 +311,29 @@ public interface ApiService {
         public String getMessage() { return message; }
         public void setMessage(String message) { this.message = message; }
     }
+
+    // ===============================
+    // REVIEW & COMMENT ENDPOINTS (User App)
+    // ===============================
+
+    @GET("/api/products/{productId}/reviews")
+    Call<ApiResponse> getProductReviews(@Path("productId") Long productId,
+                                        @Query("page") int page,
+                                        @Query("size") int size);
+
+    @POST("/api/products/{productId}/reviews/{orderItemId}")
+    Call<ApiResponse> createOrUpdateReview(@Path("productId") Long productId,
+                                           @Path("orderItemId") Long orderItemId,
+                                           @Query("userId") Long userId,
+                                           @Body Map<String, Object> body);
+
+    @GET("/api/products/{productId}/comments")
+    Call<ApiResponse> getProductComments(@Path("productId") Long productId,
+                                         @Query("page") int page,
+                                         @Query("size") int size);
+
+    @POST("/api/products/{productId}/comments")
+    Call<ApiResponse> createComment(@Path("productId") Long productId,
+                                    @Query("userId") Long userId,
+                                    @Body Map<String, Object> body);
 }

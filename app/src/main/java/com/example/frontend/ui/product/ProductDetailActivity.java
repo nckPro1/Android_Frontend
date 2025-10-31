@@ -57,9 +57,21 @@ public class ProductDetailActivity extends AppCompatActivity {
     private TextView tvFeatured;
     private Button btnAddToCart;
     private Button btnBuyNow;
+    private Button btnRate; // old dialog entry (kept if referenced)
+    private Button btnComment;
+    private android.widget.RatingBar rbYourRating;
+    private Button btnSubmitInlineRating;
     private RecyclerView rvProductOptions;
     private ProductOptionsAdapter productOptionsAdapter;
     private com.google.android.material.card.MaterialCardView optionsCardView;
+    private android.widget.RatingBar rbAvgRating;
+    private android.widget.TextView tvRatingCount;
+    private RecyclerView rvComments;
+    private android.widget.Button btnLoadMoreComments;
+    private java.util.List<String> commentItems = new java.util.ArrayList<>();
+    private androidx.recyclerview.widget.RecyclerView.Adapter<?> commentsAdapter;
+    private int commentsPage = 0;
+    private boolean commentsLoading = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -134,6 +146,10 @@ public class ProductDetailActivity extends AppCompatActivity {
             btnBuyNow = findViewById(R.id.btnBuyNow);
             rvProductOptions = findViewById(R.id.rvProductOptions);
             optionsCardView = findViewById(R.id.optionsCardView);
+            rbAvgRating = findViewById(R.id.rbAvgRating);
+            tvRatingCount = findViewById(R.id.tvRatingCount);
+            rvComments = findViewById(R.id.rvComments);
+            btnLoadMoreComments = findViewById(R.id.btnLoadMoreComments);
             android.util.Log.d("ProductDetailActivity", "rvProductOptions: " + (rvProductOptions != null ? "FOUND" : "NOT FOUND"));
             android.util.Log.d("ProductDetailActivity", "optionsCardView: " + (optionsCardView != null ? "FOUND" : "NOT FOUND"));
             android.util.Log.d("ProductDetailActivity", "All views initialized successfully");
@@ -148,10 +164,241 @@ public class ProductDetailActivity extends AppCompatActivity {
             // Button click listeners
             btnAddToCart.setOnClickListener(v -> addToCart());
             btnBuyNow.setOnClickListener(v -> buyNow());
+            btnComment = findViewById(R.id.btnComment);
+            rbYourRating = findViewById(R.id.rbYourRating);
+            btnSubmitInlineRating = findViewById(R.id.btnSubmitInlineRating);
+            if (btnSubmitInlineRating != null) btnSubmitInlineRating.setOnClickListener(v -> onSubmitInlineRating());
+            if (btnComment != null) btnComment.setOnClickListener(v -> showCommentDialog());
             android.util.Log.d("ProductDetailActivity", "Button click listeners set successfully");
+
+            // Setup comments list
+            if (rvComments != null) {
+                rvComments.setLayoutManager(new LinearLayoutManager(this));
+                commentsAdapter = new androidx.recyclerview.widget.RecyclerView.Adapter<androidx.recyclerview.widget.RecyclerView.ViewHolder>() {
+                    class VH extends androidx.recyclerview.widget.RecyclerView.ViewHolder {
+                        android.widget.TextView tvUserName, tvContent, tvTime;
+                        VH(android.view.View v){ super(v);
+                            tvUserName = v.findViewById(R.id.tvUserName);
+                            tvContent = v.findViewById(R.id.tvContent);
+                            tvTime = v.findViewById(R.id.tvTime);
+                        }
+                    }
+                    @Override
+                    public androidx.recyclerview.widget.RecyclerView.ViewHolder onCreateViewHolder(android.view.ViewGroup parent, int viewType) {
+                        android.view.View v = android.view.LayoutInflater.from(parent.getContext()).inflate(R.layout.item_comment_bubble, parent, false);
+                        return new VH(v);
+                    }
+
+                    @Override
+                    public void onBindViewHolder(androidx.recyclerview.widget.RecyclerView.ViewHolder holder, int position) {
+                        VH vh = (VH) holder;
+                        vh.tvUserName.setText("User");
+                        vh.tvContent.setText(commentItems.get(position));
+                        vh.tvTime.setText("");
+                    }
+
+                    @Override
+                    public int getItemCount() { return commentItems.size(); }
+                };
+                rvComments.setAdapter(commentsAdapter);
+            }
+            if (btnLoadMoreComments != null) {
+                btnLoadMoreComments.setOnClickListener(v -> loadMoreComments());
+            }
         } catch (Exception e) {
             android.util.Log.e("ProductDetailActivity", "Error in setupViews: " + e.getMessage(), e);
             throw e;
+        }
+    }
+
+    private void onSubmitInlineRating() {
+        if (rbYourRating == null) return;
+        int rating = (int) rbYourRating.getRating();
+        if (rating < 1 || rating > 5) {
+            Toast.makeText(this, "Vui lòng chọn số sao (1-5)", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        // Auto resolve eligible order item and submit
+        resolveOrderItemAndSubmit(rating);
+    }
+
+    private void resolveOrderItemAndSubmit(int rating) {
+        com.example.frontend.local.TokenManager tokenManager = new com.example.frontend.local.TokenManager(this);
+        long userId = tokenManager.getUserId();
+        String token = tokenManager.getAccessToken();
+        if (userId <= 0 || token == null) {
+            Toast.makeText(this, "Bạn cần đăng nhập để đánh giá", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String auth = token.startsWith("Bearer ") ? token : ("Bearer " + token);
+        apiService.getOrdersByUserId(auth, userId).enqueue(new Callback<com.example.frontend.model.ApiResponse<java.util.List<com.example.frontend.model.Order>>>() {
+            @Override
+            public void onResponse(Call<com.example.frontend.model.ApiResponse<java.util.List<com.example.frontend.model.Order>>> call, Response<com.example.frontend.model.ApiResponse<java.util.List<com.example.frontend.model.Order>>> response) {
+                try {
+                    if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                        java.util.List<com.example.frontend.model.Order> orders = response.body().getData();
+                        Long orderItemId = findOrderItemIdForProduct(orders, productId);
+                        if (orderItemId != null) {
+                            submitReviewWithSession(String.valueOf(orderItemId), rating, "");
+                        } else {
+                            Toast.makeText(ProductDetailActivity.this, "Bạn chưa có đơn hàng hoàn thành cho sản phẩm này", Toast.LENGTH_SHORT).show();
+                        }
+                    } else {
+                        Toast.makeText(ProductDetailActivity.this, "Không lấy được đơn hàng", Toast.LENGTH_SHORT).show();
+                    }
+                } catch (Exception e) {
+                    Toast.makeText(ProductDetailActivity.this, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<com.example.frontend.model.ApiResponse<java.util.List<com.example.frontend.model.Order>>> call, Throwable t) {
+                Toast.makeText(ProductDetailActivity.this, "Lỗi mạng: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private Long findOrderItemIdForProduct(java.util.List<com.example.frontend.model.Order> orders, Long targetProductId) {
+        if (orders == null) return null;
+        for (com.example.frontend.model.Order o : orders) {
+            if (o == null || o.getOrderItems() == null) continue;
+            if (o.getOrderStatus() == null || o.getOrderStatus() != com.example.frontend.model.Order.OrderStatus.DONE) continue;
+            for (com.example.frontend.model.OrderItem item : o.getOrderItems()) {
+                try {
+                    if (item != null && item.getProductId() != null && targetProductId.equals(item.getProductId())) {
+                        return item.getOrderItemId();
+                    }
+                } catch (Exception ignore) {}
+            }
+        }
+        return null;
+    }
+
+    private void showRateDialog() {
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+        builder.setTitle("Đánh giá sản phẩm");
+        android.widget.LinearLayout layout = new android.widget.LinearLayout(this);
+        layout.setOrientation(android.widget.LinearLayout.VERTICAL);
+        int pad = (int) (16 * getResources().getDisplayMetrics().density);
+        layout.setPadding(pad, pad, pad, pad);
+
+        final android.widget.RatingBar ratingBar = new android.widget.RatingBar(this, null, android.R.attr.ratingBarStyleSmall);
+        ratingBar.setNumStars(5);
+        ratingBar.setStepSize(1f);
+        ratingBar.setRating(5f);
+        layout.addView(ratingBar);
+
+        final android.widget.EditText etOrderItemId = new android.widget.EditText(this);
+        etOrderItemId.setHint("Order Item ID");
+        etOrderItemId.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        layout.addView(etOrderItemId);
+
+        final android.widget.EditText etComment = new android.widget.EditText(this);
+        etComment.setHint("Nhận xét ngắn");
+        layout.addView(etComment);
+
+        builder.setView(layout);
+        builder.setPositiveButton("Gửi", (d, w) -> submitReviewWithSession(etOrderItemId.getText().toString().trim(), (int) ratingBar.getRating(), etComment.getText().toString().trim()));
+        builder.setNegativeButton("Hủy", null);
+        builder.show();
+    }
+
+    private void submitReviewWithSession(String orderItemIdStr, int rating, String comment) {
+        try {
+            if (orderItemIdStr.isEmpty()) {
+                Toast.makeText(this, "Vui lòng nhập OrderItemID", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            com.example.frontend.local.TokenManager tokenManager = new com.example.frontend.local.TokenManager(this);
+            long userId = tokenManager.getUserId();
+            if (userId <= 0) {
+                Toast.makeText(this, "Bạn cần đăng nhập để đánh giá", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            Long orderItemId = Long.parseLong(orderItemIdStr);
+            java.util.Map<String, Object> body = new java.util.HashMap<>();
+            body.put("rating", rating);
+            if (!comment.isEmpty()) body.put("comment", comment);
+
+            apiService.createOrUpdateReview(productId, orderItemId, userId, body)
+                    .enqueue(new Callback<com.example.frontend.model.ApiResponse>() {
+                        @Override
+                        public void onResponse(Call<com.example.frontend.model.ApiResponse> call, Response<com.example.frontend.model.ApiResponse> response) {
+                            if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                                Toast.makeText(ProductDetailActivity.this, "Đã gửi đánh giá", Toast.LENGTH_SHORT).show();
+                            } else {
+                                Toast.makeText(ProductDetailActivity.this, "Lỗi gửi đánh giá", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+
+                        @Override
+                        public void onFailure(Call<com.example.frontend.model.ApiResponse> call, Throwable t) {
+                            Toast.makeText(ProductDetailActivity.this, "Lỗi mạng: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                        }
+                    });
+        } catch (Exception e) {
+            Toast.makeText(this, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void showCommentDialog() {
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+        builder.setTitle("Bình luận sản phẩm");
+        android.widget.LinearLayout layout = new android.widget.LinearLayout(this);
+        layout.setOrientation(android.widget.LinearLayout.VERTICAL);
+        int pad = (int) (16 * getResources().getDisplayMetrics().density);
+        layout.setPadding(pad, pad, pad, pad);
+
+        final android.widget.EditText etReviewId = new android.widget.EditText(this);
+        etReviewId.setHint("Review ID (tùy chọn)");
+        etReviewId.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        layout.addView(etReviewId);
+
+        final android.widget.EditText etContent = new android.widget.EditText(this);
+        etContent.setHint("Nội dung bình luận");
+        layout.addView(etContent);
+
+        builder.setView(layout);
+        builder.setPositiveButton("Gửi", (d, w) -> submitCommentWithSession(etReviewId.getText().toString().trim(), etContent.getText().toString().trim()));
+        builder.setNegativeButton("Hủy", null);
+        builder.show();
+    }
+
+    private void submitCommentWithSession(String reviewIdStr, String content) {
+        try {
+            if (content.isEmpty()) {
+                Toast.makeText(this, "Vui lòng nhập nội dung", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            com.example.frontend.local.TokenManager tokenManager = new com.example.frontend.local.TokenManager(this);
+            long userId = tokenManager.getUserId();
+            if (userId <= 0) {
+                Toast.makeText(this, "Bạn cần đăng nhập để bình luận", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            java.util.Map<String, Object> body = new java.util.HashMap<>();
+            body.put("content", content);
+            if (!reviewIdStr.isEmpty()) {
+                try { body.put("reviewId", Long.parseLong(reviewIdStr)); } catch (Exception ignore) {}
+            }
+            apiService.createComment(productId, userId, body)
+                    .enqueue(new Callback<com.example.frontend.model.ApiResponse>() {
+                        @Override
+                        public void onResponse(Call<com.example.frontend.model.ApiResponse> call, Response<com.example.frontend.model.ApiResponse> response) {
+                            if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                                Toast.makeText(ProductDetailActivity.this, "Đã gửi bình luận", Toast.LENGTH_SHORT).show();
+                            } else {
+                                Toast.makeText(ProductDetailActivity.this, "Lỗi gửi bình luận", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+
+                        @Override
+                        public void onFailure(Call<com.example.frontend.model.ApiResponse> call, Throwable t) {
+                            Toast.makeText(ProductDetailActivity.this, "Lỗi mạng: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                        }
+                    });
+        } catch (Exception e) {
+            Toast.makeText(this, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -179,6 +426,9 @@ public class ProductDetailActivity extends AppCompatActivity {
                                 displayProductDetail();
                                 // Load options from product data instead of separate API call
                                 loadProductOptionsFromProduct();
+                                // Load rating summary & comments
+                                loadReviewsForSummary();
+                                resetAndLoadComments();
                             } else {
                                 showError("Không thể parse dữ liệu sản phẩm");
                             }
@@ -273,6 +523,69 @@ public class ProductDetailActivity extends AppCompatActivity {
             optionsCardView.setVisibility(View.GONE);
             android.util.Log.d("ProductDetailActivity", "Options section hidden - no options available");
         }
+    }
+
+    private void loadReviewsForSummary() {
+        apiService.getProductReviews(productId, 0, 50).enqueue(new Callback<com.example.frontend.model.ApiResponse>() {
+            @Override
+            public void onResponse(Call<com.example.frontend.model.ApiResponse> call, Response<com.example.frontend.model.ApiResponse> response) {
+                try {
+                    if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                        java.util.List<java.util.Map<String, Object>> content = com.example.frontend.util.JsonParser.extractPageContentAsList(response.body().getData());
+                        if (content != null && !content.isEmpty()) {
+                            int count = 0; int sum = 0;
+                            for (java.util.Map<String, Object> item : content) {
+                                Object r = item.get("rating");
+                                if (r instanceof Number) { sum += ((Number) r).intValue(); count++; }
+                            }
+                            float avg = count > 0 ? ((float) sum / (float) count) : 0f;
+                            if (rbAvgRating != null) rbAvgRating.setRating(avg);
+                            if (tvRatingCount != null) tvRatingCount.setText("(" + count + ")");
+                        } else {
+                            if (rbAvgRating != null) rbAvgRating.setRating(0f);
+                            if (tvRatingCount != null) tvRatingCount.setText("(0)");
+                        }
+                    }
+                } catch (Exception ignored) {}
+            }
+
+            @Override
+            public void onFailure(Call<com.example.frontend.model.ApiResponse> call, Throwable t) {}
+        });
+    }
+
+    private void resetAndLoadComments() {
+        commentsPage = 0; commentItems.clear();
+        if (commentsAdapter != null) commentsAdapter.notifyDataSetChanged();
+        loadMoreComments();
+    }
+
+    private void loadMoreComments() {
+        if (commentsLoading) return; commentsLoading = true;
+        apiService.getProductComments(productId, commentsPage, 10).enqueue(new Callback<com.example.frontend.model.ApiResponse>() {
+            @Override
+            public void onResponse(Call<com.example.frontend.model.ApiResponse> call, Response<com.example.frontend.model.ApiResponse> response) {
+                commentsLoading = false;
+                try {
+                    if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                        java.util.List<String> content = com.example.frontend.util.JsonParser.extractPageContentAsStringList(response.body().getData());
+                        if (content != null && !content.isEmpty()) {
+                            int start = commentItems.size();
+                            commentItems.addAll(content);
+                            if (commentsAdapter != null) commentsAdapter.notifyItemRangeInserted(start, content.size());
+                            commentsPage++;
+                        } else {
+                            if (btnLoadMoreComments != null) btnLoadMoreComments.setEnabled(false);
+                        }
+                    }
+                } catch (Exception ignored) {}
+            }
+
+            @Override
+            public void onFailure(Call<com.example.frontend.model.ApiResponse> call, Throwable t) {
+                commentsLoading = false;
+            }
+        });
     }
 
     private void updateTotalPrice() {

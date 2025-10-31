@@ -11,8 +11,8 @@ public class CreatePaymentRequest {
 
     public CreatePaymentRequest() {}
 
-    public CreatePaymentRequest(Long orderId, String paymentMethod, java.math.BigDecimal amount,
-                                String bankCode, String language, String ipAddress) {
+    public CreatePaymentRequest(Long orderId, String paymentMethod, java.math.BigDecimal amount, 
+                               String bankCode, String language, String ipAddress) {
         this.orderId = orderId;
         this.paymentMethod = paymentMethod;
         this.amount = amount;

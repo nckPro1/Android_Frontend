@@ -79,11 +79,11 @@ public class JsonParser {
             android.util.Log.d("JsonParser", "parseProductOptions: data type: " + data.getClass().getSimpleName());
             String json = gson.toJson(data);
             android.util.Log.d("JsonParser", "parseProductOptions: raw json: " + json);
-
+            
             Type optionListType = new TypeToken<List<ProductOption>>() {}.getType();
             List<ProductOption> result = gson.fromJson(json, optionListType);
             android.util.Log.d("JsonParser", "parseProductOptions: parsed count: " + (result != null ? result.size() : 0));
-
+            
             // Log each parsed option
             if (result != null) {
                 for (int i = 0; i < result.size(); i++) {
@@ -91,7 +91,7 @@ public class JsonParser {
                     android.util.Log.d("JsonParser", "Parsed option " + i + ": " + option.toString());
                 }
             }
-
+            
             return result;
         } catch (Exception e) {
             android.util.Log.e("JsonParser", "parseProductOptions error: " + e.getMessage(), e);
@@ -107,5 +107,38 @@ public class JsonParser {
             e.printStackTrace();
         }
         return null;
+    }
+
+    // Generic helpers for Page responses
+    public static List<Map<String, Object>> extractPageContentAsList(Object data) {
+        try {
+            if (data instanceof Map) {
+                Object content = ((Map<?, ?>) data).get("content");
+                if (content instanceof List) {
+                    Type listType = new TypeToken<List<Map<String, Object>>>(){}.getType();
+                    List<Map<String, Object>> list = gson.fromJson(gson.toJson(content), listType);
+                    return list != null ? list : Collections.emptyList();
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return Collections.emptyList();
+    }
+
+    public static List<String> extractPageContentAsStringList(Object data) {
+        try {
+            if (data instanceof Map) {
+                Object content = ((Map<?, ?>) data).get("content");
+                if (content instanceof List) {
+                    Type listType = new TypeToken<List<String>>(){}.getType();
+                    List<String> list = gson.fromJson(gson.toJson(content), listType);
+                    return list != null ? list : Collections.emptyList();
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return Collections.emptyList();
     }
 }
