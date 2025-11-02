@@ -25,6 +25,7 @@ import com.example.frontend.model.LoginRequest;
 import com.example.frontend.model.UserDto;
 import com.example.frontend.remote.ApiClient;
 import com.example.frontend.remote.ApiService;
+import com.example.frontend.util.FCMTokenManager;
 import com.google.android.material.button.MaterialButton;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -47,6 +48,7 @@ public class LoginActivity extends AppCompatActivity {
     private ApiService apiService;
     private ActivityResultLauncher<Intent> googleSignInLauncher;
     private GoogleSignInHelper googleSignInHelper;
+    private FCMTokenManager fcmTokenManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,10 +65,14 @@ public class LoginActivity extends AppCompatActivity {
 
         apiService = ApiClient.getClient().create(ApiService.class);
         googleSignInHelper = new GoogleSignInHelper(this);
+        fcmTokenManager = new FCMTokenManager(this);
 
         setupGoogleSignInLauncher();
         setupClickListeners();
         handleRegistrationSuccess();
+        
+        // Lấy FCM token (sẽ được gửi lên server sau khi login thành công)
+        fcmTokenManager.getAndSendToken();
     }
 
     private void initViews() {
@@ -212,6 +218,15 @@ public class LoginActivity extends AppCompatActivity {
             UserDto user = authResponse.getUser();
             if (user != null) {
                 tokenManager.saveUserInfo(user.getUserId(), user.getEmail(), user.getFullName());
+            }
+
+            // Gửi FCM token lên server sau khi login thành công
+            String savedToken = fcmTokenManager.getSavedToken();
+            if (savedToken != null) {
+                fcmTokenManager.sendTokenToServer(savedToken);
+            } else {
+                // Nếu chưa có token, lấy lại
+                fcmTokenManager.getAndSendToken();
             }
 
             Toast.makeText(this, "Đăng nhập thành công!", Toast.LENGTH_SHORT).show();

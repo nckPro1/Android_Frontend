@@ -28,6 +28,7 @@ import com.example.frontend.ui.adapter.ProductAdapter;
 import com.example.frontend.ui.auth.login.LoginActivity;
 import com.example.frontend.ui.cart.CartActivity;
 import com.example.frontend.ui.profile.ProfileActivity;
+import com.example.frontend.util.FCMTokenManager;
 import com.example.frontend.util.JsonParser;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.card.MaterialCardView;
@@ -44,6 +45,7 @@ public class HomeActivity extends AppCompatActivity {
     private TextView tvWelcome;
     private TokenManager tokenManager;
     private ApiService apiService;
+    private FCMTokenManager fcmTokenManager;
     private RecyclerView rvCategories;
     private CategoryAdapter categoryAdapter;
     private List<Category> categories;
@@ -67,6 +69,10 @@ public class HomeActivity extends AppCompatActivity {
             goToLogin();
             return; // Quan trọng: dừng thực thi nếu chưa đăng nhập
         }
+
+        // Khởi tạo FCM Token Manager và gửi token lên server nếu chưa gửi
+        fcmTokenManager = new FCMTokenManager(this);
+        fcmTokenManager.getAndSendToken();
 
         setupViews();
         loadUserInfo();

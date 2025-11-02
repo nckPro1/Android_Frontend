@@ -36,4 +36,9 @@
     <color name="success">#4CAF50</color>
     <color name="warning">#FF9800</color>
     <color name="error">#F44336</color>
+    
+    <!-- Chat Colors -->
+    <color name="colorPrimary">#FF5722</color>
+    <color name="message_received_bg">#E0E0E0</color>
+    <color name="message_time_color">#666666</color>
 </resources>

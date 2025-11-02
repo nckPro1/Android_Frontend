@@ -23,6 +23,10 @@ import com.example.frontend.model.CreatePaymentRequest;
 import com.example.frontend.model.PaymentDTO;
 import com.example.frontend.model.CreateVnpayPaymentRequest;
 import com.example.frontend.model.VnpayPaymentResponse;
+import com.example.frontend.model.ConversationDTO;
+import com.example.frontend.model.MessageDTO;
+import com.example.frontend.model.CreateConversationRequest;
+import com.example.frontend.model.SendMessageRequest;
 
 import java.util.List;
 import java.util.Map;
@@ -336,4 +340,68 @@ public interface ApiService {
     Call<ApiResponse> createComment(@Path("productId") Long productId,
                                     @Query("userId") Long userId,
                                     @Body Map<String, Object> body);
+
+    // ===============================
+    // FCM TOKEN ENDPOINT
+    // ===============================
+
+    /**
+     * Cập nhật FCM token cho user để nhận notification
+     */
+    @PUT("/api/user/{userId}/fcm-token")
+    Call<ApiResponse> updateFCMToken(@Header("Authorization") String token,
+                                      @Path("userId") Long userId,
+                                      @Query("fcmToken") String fcmToken);
+
+    // ===============================
+    // CHAT ENDPOINTS
+    // ===============================
+
+    /**
+     * Tạo conversation mới
+     */
+    @POST("/api/chat/conversations")
+    Call<ApiResponse<ConversationDTO>> createConversation(
+            @Header("Authorization") String token,
+            @Body CreateConversationRequest request);
+
+    /**
+     * Lấy danh sách conversations của user
+     */
+    @GET("/api/chat/conversations")
+    Call<ApiResponse<List<ConversationDTO>>> getUserConversations(
+            @Header("Authorization") String token);
+
+    /**
+     * Lấy chi tiết conversation
+     */
+    @GET("/api/chat/conversations/{conversationId}")
+    Call<ApiResponse<ConversationDTO>> getConversation(
+            @Header("Authorization") String token,
+            @Path("conversationId") Long conversationId);
+
+    /**
+     * Lấy messages của conversation
+     */
+    @GET("/api/chat/conversations/{conversationId}/messages")
+    Call<ApiResponse<List<MessageDTO>>> getMessages(
+            @Header("Authorization") String token,
+            @Path("conversationId") Long conversationId);
+
+    /**
+     * Gửi message
+     */
+    @POST("/api/chat/conversations/{conversationId}/messages")
+    Call<ApiResponse<MessageDTO>> sendMessage(
+            @Header("Authorization") String token,
+            @Path("conversationId") Long conversationId,
+            @Body SendMessageRequest request);
+
+    /**
+     * Đánh dấu messages đã đọc
+     */
+    @PUT("/api/chat/conversations/{conversationId}/read")
+    Call<ApiResponse> markAsRead(
+            @Header("Authorization") String token,
+            @Path("conversationId") Long conversationId);
 }

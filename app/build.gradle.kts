@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
-    // ❌ ĐÃ XÓA: id("com.google.gms.google-services")
+
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -66,6 +67,12 @@ dependencies {
     implementation("com.squareup.picasso:picasso:2.8")
     implementation("androidx.activity:activity:1.8.2")
     implementation("androidx.fragment:fragment:1.6.2")
+
+    // Firebase Realtime Database (Chat)
+    implementation("com.google.firebase:firebase-database:20.3.1")
+
+    // Firebase Cloud Messaging (Notification)
+    implementation("com.google.firebase:firebase-messaging:23.4.1")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)

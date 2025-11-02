@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.frontend.R;
+import com.example.frontend.model.Comment;
 import com.example.frontend.model.Product;
 import com.example.frontend.model.ProductOption;
 import com.example.frontend.remote.ApiClient;
@@ -68,8 +69,8 @@ public class ProductDetailActivity extends AppCompatActivity {
     private android.widget.TextView tvRatingCount;
     private RecyclerView rvComments;
     private android.widget.Button btnLoadMoreComments;
-    private java.util.List<String> commentItems = new java.util.ArrayList<>();
-    private androidx.recyclerview.widget.RecyclerView.Adapter<?> commentsAdapter;
+    private CommentAdapter commentAdapter;
+    private java.util.List<Comment> comments = new java.util.ArrayList<>();
     private int commentsPage = 0;
     private boolean commentsLoading = false;
 
@@ -174,33 +175,8 @@ public class ProductDetailActivity extends AppCompatActivity {
             // Setup comments list
             if (rvComments != null) {
                 rvComments.setLayoutManager(new LinearLayoutManager(this));
-                commentsAdapter = new androidx.recyclerview.widget.RecyclerView.Adapter<androidx.recyclerview.widget.RecyclerView.ViewHolder>() {
-                    class VH extends androidx.recyclerview.widget.RecyclerView.ViewHolder {
-                        android.widget.TextView tvUserName, tvContent, tvTime;
-                        VH(android.view.View v){ super(v);
-                            tvUserName = v.findViewById(R.id.tvUserName);
-                            tvContent = v.findViewById(R.id.tvContent);
-                            tvTime = v.findViewById(R.id.tvTime);
-                        }
-                    }
-                    @Override
-                    public androidx.recyclerview.widget.RecyclerView.ViewHolder onCreateViewHolder(android.view.ViewGroup parent, int viewType) {
-                        android.view.View v = android.view.LayoutInflater.from(parent.getContext()).inflate(R.layout.item_comment_bubble, parent, false);
-                        return new VH(v);
-                    }
-
-                    @Override
-                    public void onBindViewHolder(androidx.recyclerview.widget.RecyclerView.ViewHolder holder, int position) {
-                        VH vh = (VH) holder;
-                        vh.tvUserName.setText("User");
-                        vh.tvContent.setText(commentItems.get(position));
-                        vh.tvTime.setText("");
-                    }
-
-                    @Override
-                    public int getItemCount() { return commentItems.size(); }
-                };
-                rvComments.setAdapter(commentsAdapter);
+                commentAdapter = new CommentAdapter();
+                rvComments.setAdapter(commentAdapter);
             }
             if (btnLoadMoreComments != null) {
                 btnLoadMoreComments.setOnClickListener(v -> loadMoreComments());
@@ -343,28 +319,33 @@ public class ProductDetailActivity extends AppCompatActivity {
 
     private void showCommentDialog() {
         android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
-        builder.setTitle("Bình luận sản phẩm");
-        android.widget.LinearLayout layout = new android.widget.LinearLayout(this);
-        layout.setOrientation(android.widget.LinearLayout.VERTICAL);
-        int pad = (int) (16 * getResources().getDisplayMetrics().density);
-        layout.setPadding(pad, pad, pad, pad);
+        // Không set title, sẽ dùng title trong layout
 
-        final android.widget.EditText etReviewId = new android.widget.EditText(this);
-        etReviewId.setHint("Review ID (tùy chọn)");
-        etReviewId.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
-        layout.addView(etReviewId);
+        // Inflate custom layout
+        android.view.View dialogView = getLayoutInflater().inflate(R.layout.layout_comment_form, null);
+        builder.setView(dialogView);
 
-        final android.widget.EditText etContent = new android.widget.EditText(this);
-        etContent.setHint("Nội dung bình luận");
-        layout.addView(etContent);
+        com.google.android.material.textfield.TextInputEditText etComment = dialogView.findViewById(R.id.etComment);
+        com.google.android.material.button.MaterialButton btnSubmitComment = dialogView.findViewById(R.id.btnSubmitComment);
 
-        builder.setView(layout);
-        builder.setPositiveButton("Gửi", (d, w) -> submitCommentWithSession(etReviewId.getText().toString().trim(), etContent.getText().toString().trim()));
-        builder.setNegativeButton("Hủy", null);
-        builder.show();
+        android.app.AlertDialog dialog = builder.create();
+
+        btnSubmitComment.setOnClickListener(v -> {
+            String content = etComment.getText() != null ? etComment.getText().toString().trim() : "";
+            if (content.isEmpty()) {
+                Toast.makeText(this, "Vui lòng nhập nội dung bình luận", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            submitCommentWithSession(content);
+            dialog.dismiss();
+        });
+
+        // Add cancel button outside the layout
+        dialog.setButton(android.app.AlertDialog.BUTTON_NEGATIVE, "Hủy", (d, w) -> dialog.dismiss());
+        dialog.show();
     }
 
-    private void submitCommentWithSession(String reviewIdStr, String content) {
+    private void submitCommentWithSession(String content) {
         try {
             if (content.isEmpty()) {
                 Toast.makeText(this, "Vui lòng nhập nội dung", Toast.LENGTH_SHORT).show();
@@ -376,19 +357,21 @@ public class ProductDetailActivity extends AppCompatActivity {
                 Toast.makeText(this, "Bạn cần đăng nhập để bình luận", Toast.LENGTH_SHORT).show();
                 return;
             }
+            // Không gửi reviewId nữa, backend sẽ tự động tìm
             java.util.Map<String, Object> body = new java.util.HashMap<>();
             body.put("content", content);
-            if (!reviewIdStr.isEmpty()) {
-                try { body.put("reviewId", Long.parseLong(reviewIdStr)); } catch (Exception ignore) {}
-            }
+
             apiService.createComment(productId, userId, body)
                     .enqueue(new Callback<com.example.frontend.model.ApiResponse>() {
                         @Override
                         public void onResponse(Call<com.example.frontend.model.ApiResponse> call, Response<com.example.frontend.model.ApiResponse> response) {
                             if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                                 Toast.makeText(ProductDetailActivity.this, "Đã gửi bình luận", Toast.LENGTH_SHORT).show();
+                                // Reload comments
+                                resetAndLoadComments();
                             } else {
-                                Toast.makeText(ProductDetailActivity.this, "Lỗi gửi bình luận", Toast.LENGTH_SHORT).show();
+                                String errorMsg = response.body() != null ? response.body().getMessage() : "Lỗi gửi bình luận";
+                                Toast.makeText(ProductDetailActivity.this, errorMsg, Toast.LENGTH_SHORT).show();
                             }
                         }
 
@@ -555,37 +538,126 @@ public class ProductDetailActivity extends AppCompatActivity {
     }
 
     private void resetAndLoadComments() {
-        commentsPage = 0; commentItems.clear();
-        if (commentsAdapter != null) commentsAdapter.notifyDataSetChanged();
+        commentsPage = 0;
+        comments.clear();
+        if (commentAdapter != null) {
+            commentAdapter.setComments(new java.util.ArrayList<>());
+        }
         loadMoreComments();
     }
 
     private void loadMoreComments() {
-        if (commentsLoading) return; commentsLoading = true;
+        if (commentsLoading) return;
+        commentsLoading = true;
         apiService.getProductComments(productId, commentsPage, 10).enqueue(new Callback<com.example.frontend.model.ApiResponse>() {
             @Override
             public void onResponse(Call<com.example.frontend.model.ApiResponse> call, Response<com.example.frontend.model.ApiResponse> response) {
                 commentsLoading = false;
                 try {
                     if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
-                        java.util.List<String> content = com.example.frontend.util.JsonParser.extractPageContentAsStringList(response.body().getData());
-                        if (content != null && !content.isEmpty()) {
-                            int start = commentItems.size();
-                            commentItems.addAll(content);
-                            if (commentsAdapter != null) commentsAdapter.notifyItemRangeInserted(start, content.size());
+                        // Parse comments from response
+                        java.util.List<Comment> newComments = parseCommentsFromResponse(response.body().getData());
+                        if (newComments != null && !newComments.isEmpty()) {
+                            if (commentAdapter != null) {
+                                commentAdapter.addComments(newComments);
+                            }
+                            comments.addAll(newComments);
                             commentsPage++;
+
+                            // Check if there are more comments
+                            if (btnLoadMoreComments != null) {
+                                btnLoadMoreComments.setEnabled(true);
+                            }
                         } else {
-                            if (btnLoadMoreComments != null) btnLoadMoreComments.setEnabled(false);
+                            if (btnLoadMoreComments != null) {
+                                btnLoadMoreComments.setEnabled(false);
+                                if (comments.isEmpty()) {
+                                    btnLoadMoreComments.setText("Chưa có bình luận nào");
+                                } else {
+                                    btnLoadMoreComments.setText("Đã tải hết");
+                                }
+                            }
                         }
                     }
-                } catch (Exception ignored) {}
+                } catch (Exception e) {
+                    android.util.Log.e("ProductDetailActivity", "Error loading comments: " + e.getMessage(), e);
+                }
             }
 
             @Override
             public void onFailure(Call<com.example.frontend.model.ApiResponse> call, Throwable t) {
                 commentsLoading = false;
+                android.util.Log.e("ProductDetailActivity", "Failed to load comments: " + t.getMessage(), t);
             }
         });
+    }
+
+    private java.util.List<Comment> parseCommentsFromResponse(Object data) {
+        java.util.List<Comment> commentList = new java.util.ArrayList<>();
+        try {
+            if (data == null) return commentList;
+
+            // Parse JSON response
+            com.google.gson.Gson gson = new com.google.gson.Gson();
+            String jsonString = gson.toJson(data);
+            com.google.gson.JsonObject jsonObject = com.google.gson.JsonParser.parseString(jsonString).getAsJsonObject();
+
+            // Check if it's a page object
+            if (jsonObject.has("content")) {
+                com.google.gson.JsonArray contentArray = jsonObject.getAsJsonArray("content");
+                for (int i = 0; i < contentArray.size(); i++) {
+                    com.google.gson.JsonObject commentObj = contentArray.get(i).getAsJsonObject();
+                    Comment comment = parseCommentFromJson(commentObj);
+                    if (comment != null) {
+                        commentList.add(comment);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            android.util.Log.e("ProductDetailActivity", "Error parsing comments: " + e.getMessage(), e);
+        }
+        return commentList;
+    }
+
+    private Comment parseCommentFromJson(com.google.gson.JsonObject json) {
+        try {
+            Comment comment = new Comment();
+            if (json.has("commentId")) comment.setCommentId(json.get("commentId").getAsLong());
+            if (json.has("productId")) comment.setProductId(json.get("productId").getAsLong());
+            if (json.has("userId")) comment.setUserId(json.get("userId").getAsLong());
+            if (json.has("reviewId") && !json.get("reviewId").isJsonNull()) {
+                comment.setReviewId(json.get("reviewId").getAsLong());
+            }
+            if (json.has("content")) comment.setContent(json.get("content").getAsString());
+            if (json.has("userName")) comment.setUserName(json.get("userName").getAsString());
+            if (json.has("userAvatarUrl") && !json.get("userAvatarUrl").isJsonNull()) {
+                comment.setUserAvatarUrl(json.get("userAvatarUrl").getAsString());
+            }
+            if (json.has("createdAt") && !json.get("createdAt").isJsonNull()) {
+                String createdAtStr = json.get("createdAt").getAsString();
+                comment.setCreatedAt(parseDateTime(createdAtStr));
+            }
+            if (json.has("updatedAt") && !json.get("updatedAt").isJsonNull()) {
+                String updatedAtStr = json.get("updatedAt").getAsString();
+                comment.setUpdatedAt(parseDateTime(updatedAtStr));
+            }
+            return comment;
+        } catch (Exception e) {
+            android.util.Log.e("ProductDetailActivity", "Error parsing single comment: " + e.getMessage(), e);
+            return null;
+        }
+    }
+
+    private java.time.LocalDateTime parseDateTime(String dateTimeStr) {
+        try {
+            return java.time.LocalDateTime.parse(dateTimeStr, java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        } catch (Exception e) {
+            try {
+                return java.time.LocalDateTime.parse(dateTimeStr, java.time.format.DateTimeFormatter.ISO_DATE_TIME);
+            } catch (Exception e2) {
+                return null;
+            }
+        }
     }
 
     private void updateTotalPrice() {
