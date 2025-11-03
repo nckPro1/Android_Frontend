@@ -27,6 +27,7 @@ import com.example.frontend.model.ConversationDTO;
 import com.example.frontend.model.MessageDTO;
 import com.example.frontend.model.CreateConversationRequest;
 import com.example.frontend.model.SendMessageRequest;
+import com.example.frontend.model.Notification;
 
 import java.util.List;
 import java.util.Map;
@@ -203,7 +204,7 @@ public interface ApiService {
     @GET("/api/orders/shipping-fee")
     Call<ApiResponse<ShippingFeeInfo>> getShippingFeeInfo();
 
-    
+
 
     // ===============================
     // ADDRESS & LOCATION ENDPOINTS - REMOVED (simplified to manual input)
@@ -350,8 +351,8 @@ public interface ApiService {
      */
     @PUT("/api/user/{userId}/fcm-token")
     Call<ApiResponse> updateFCMToken(@Header("Authorization") String token,
-                                      @Path("userId") Long userId,
-                                      @Query("fcmToken") String fcmToken);
+                                     @Path("userId") Long userId,
+                                     @Query("fcmToken") String fcmToken);
 
     // ===============================
     // CHAT ENDPOINTS
@@ -404,4 +405,44 @@ public interface ApiService {
     Call<ApiResponse> markAsRead(
             @Header("Authorization") String token,
             @Path("conversationId") Long conversationId);
+
+    // ===============================
+    // NOTIFICATION ENDPOINTS
+    // ===============================
+
+    /**
+     * Lấy tất cả notifications của user
+     */
+    @GET("/api/notifications")
+    Call<ApiResponse<List<Notification>>> getUserNotifications(
+            @Header("Authorization") String token);
+
+    /**
+     * Lấy notifications chưa đọc của user
+     */
+    @GET("/api/notifications/unread")
+    Call<ApiResponse<List<Notification>>> getUnreadNotifications(
+            @Header("Authorization") String token);
+
+    /**
+     * Đếm số notifications chưa đọc của user
+     */
+    @GET("/api/notifications/unread/count")
+    Call<ApiResponse<Long>> getUnreadCount(
+            @Header("Authorization") String token);
+
+    /**
+     * Đánh dấu notification là đã đọc
+     */
+    @PUT("/api/notifications/{notificationId}/read")
+    Call<ApiResponse> markNotificationAsRead(
+            @Header("Authorization") String token,
+            @Path("notificationId") Long notificationId);
+
+    /**
+     * Đánh dấu tất cả notifications là đã đọc
+     */
+    @PUT("/api/notifications/read-all")
+    Call<ApiResponse> markAllNotificationsAsRead(
+            @Header("Authorization") String token);
 }

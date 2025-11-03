@@ -79,11 +79,11 @@ public class JsonParser {
             android.util.Log.d("JsonParser", "parseProductOptions: data type: " + data.getClass().getSimpleName());
             String json = gson.toJson(data);
             android.util.Log.d("JsonParser", "parseProductOptions: raw json: " + json);
-            
+
             Type optionListType = new TypeToken<List<ProductOption>>() {}.getType();
             List<ProductOption> result = gson.fromJson(json, optionListType);
             android.util.Log.d("JsonParser", "parseProductOptions: parsed count: " + (result != null ? result.size() : 0));
-            
+
             // Log each parsed option
             if (result != null) {
                 for (int i = 0; i < result.size(); i++) {
@@ -91,7 +91,7 @@ public class JsonParser {
                     android.util.Log.d("JsonParser", "Parsed option " + i + ": " + option.toString());
                 }
             }
-            
+
             return result;
         } catch (Exception e) {
             android.util.Log.e("JsonParser", "parseProductOptions error: " + e.getMessage(), e);
@@ -112,15 +112,43 @@ public class JsonParser {
     // Generic helpers for Page responses
     public static List<Map<String, Object>> extractPageContentAsList(Object data) {
         try {
+            android.util.Log.d("JsonParser", "extractPageContentAsList: data type: " + (data != null ? data.getClass().getSimpleName() : "null"));
+
             if (data instanceof Map) {
-                Object content = ((Map<?, ?>) data).get("content");
+                Map<?, ?> dataMap = (Map<?, ?>) data;
+                android.util.Log.d("JsonParser", "extractPageContentAsList: data is Map, keys: " + dataMap.keySet());
+
+                Object content = dataMap.get("content");
+                android.util.Log.d("JsonParser", "extractPageContentAsList: content type: " + (content != null ? content.getClass().getSimpleName() : "null"));
+                android.util.Log.d("JsonParser", "extractPageContentAsList: content: " + content);
+
                 if (content instanceof List) {
+                    List<?> contentList = (List<?>) content;
+                    android.util.Log.d("JsonParser", "extractPageContentAsList: content is List, size: " + contentList.size());
+
+                    if (!contentList.isEmpty()) {
+                        Object firstItem = contentList.get(0);
+                        android.util.Log.d("JsonParser", "extractPageContentAsList: first item type: " + (firstItem != null ? firstItem.getClass().getSimpleName() : "null"));
+                        android.util.Log.d("JsonParser", "extractPageContentAsList: first item: " + firstItem);
+                    }
+
+                    // Convert to JSON string and parse back to ensure proper type conversion
+                    String contentJson = gson.toJson(content);
+                    android.util.Log.d("JsonParser", "extractPageContentAsList: content JSON string: " + contentJson);
+
                     Type listType = new TypeToken<List<Map<String, Object>>>(){}.getType();
-                    List<Map<String, Object>> list = gson.fromJson(gson.toJson(content), listType);
+                    List<Map<String, Object>> list = gson.fromJson(contentJson, listType);
+                    android.util.Log.d("JsonParser", "extractPageContentAsList: parsed list size: " + (list != null ? list.size() : 0));
+
                     return list != null ? list : Collections.emptyList();
+                } else {
+                    android.util.Log.w("JsonParser", "extractPageContentAsList: content is not a List");
                 }
+            } else {
+                android.util.Log.w("JsonParser", "extractPageContentAsList: data is not a Map");
             }
         } catch (Exception e) {
+            android.util.Log.e("JsonParser", "extractPageContentAsList error: " + e.getMessage(), e);
             e.printStackTrace();
         }
         return Collections.emptyList();

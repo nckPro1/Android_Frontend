@@ -549,15 +549,31 @@ public class ProductDetailActivity extends AppCompatActivity {
     private void loadMoreComments() {
         if (commentsLoading) return;
         commentsLoading = true;
+        android.util.Log.d("ProductDetailActivity", "Loading comments for productId: " + productId + ", page: " + commentsPage);
         apiService.getProductComments(productId, commentsPage, 10).enqueue(new Callback<com.example.frontend.model.ApiResponse>() {
             @Override
             public void onResponse(Call<com.example.frontend.model.ApiResponse> call, Response<com.example.frontend.model.ApiResponse> response) {
                 commentsLoading = false;
                 try {
+                    android.util.Log.d("ProductDetailActivity", "Comments API response - isSuccessful: " + response.isSuccessful());
+                    if (response.body() != null) {
+                        android.util.Log.d("ProductDetailActivity", "Comments API response - isSuccess: " + response.body().isSuccess());
+                        android.util.Log.d("ProductDetailActivity", "Comments API response - data: " + response.body().getData());
+                    } else {
+                        android.util.Log.d("ProductDetailActivity", "Comments API response - body is null");
+                    }
+
                     if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
-                        // Parse comments from response
-                        java.util.List<Comment> newComments = parseCommentsFromResponse(response.body().getData());
+                        // Parse comments from response - parse trực tiếp từ JSON string
+                        Object responseData = response.body().getData();
+                        android.util.Log.d("ProductDetailActivity", "Parsing comments from response data: " + responseData);
+                        android.util.Log.d("ProductDetailActivity", "Response data type: " + (responseData != null ? responseData.getClass().getSimpleName() : "null"));
+
+                        java.util.List<Comment> newComments = parseCommentsDirectlyFromResponse(responseData);
+                        android.util.Log.d("ProductDetailActivity", "Parsed comments count: " + (newComments != null ? newComments.size() : 0));
+
                         if (newComments != null && !newComments.isEmpty()) {
+                            android.util.Log.d("ProductDetailActivity", "Adding " + newComments.size() + " comments to adapter");
                             if (commentAdapter != null) {
                                 commentAdapter.addComments(newComments);
                             }
@@ -569,6 +585,7 @@ public class ProductDetailActivity extends AppCompatActivity {
                                 btnLoadMoreComments.setEnabled(true);
                             }
                         } else {
+                            android.util.Log.d("ProductDetailActivity", "No comments found or empty list");
                             if (btnLoadMoreComments != null) {
                                 btnLoadMoreComments.setEnabled(false);
                                 if (comments.isEmpty()) {
@@ -578,9 +595,12 @@ public class ProductDetailActivity extends AppCompatActivity {
                                 }
                             }
                         }
+                    } else {
+                        android.util.Log.w("ProductDetailActivity", "Comments API response not successful or body is null");
                     }
                 } catch (Exception e) {
                     android.util.Log.e("ProductDetailActivity", "Error loading comments: " + e.getMessage(), e);
+                    e.printStackTrace();
                 }
             }
 
@@ -588,62 +608,187 @@ public class ProductDetailActivity extends AppCompatActivity {
             public void onFailure(Call<com.example.frontend.model.ApiResponse> call, Throwable t) {
                 commentsLoading = false;
                 android.util.Log.e("ProductDetailActivity", "Failed to load comments: " + t.getMessage(), t);
+                t.printStackTrace();
             }
         });
     }
 
-    private java.util.List<Comment> parseCommentsFromResponse(Object data) {
+    private java.util.List<Comment> parseCommentsDirectlyFromResponse(Object responseData) {
         java.util.List<Comment> commentList = new java.util.ArrayList<>();
         try {
-            if (data == null) return commentList;
+            if (responseData == null) {
+                android.util.Log.d("ProductDetailActivity", "parseCommentsDirectlyFromResponse: responseData is null");
+                return commentList;
+            }
 
-            // Parse JSON response
+            // Convert to JSON string first
             com.google.gson.Gson gson = new com.google.gson.Gson();
-            String jsonString = gson.toJson(data);
+            String jsonString = gson.toJson(responseData);
+            android.util.Log.d("ProductDetailActivity", "parseCommentsDirectlyFromResponse: JSON string: " + jsonString);
+
+            // Parse as JsonObject to access "content" field
             com.google.gson.JsonObject jsonObject = com.google.gson.JsonParser.parseString(jsonString).getAsJsonObject();
 
-            // Check if it's a page object
             if (jsonObject.has("content")) {
                 com.google.gson.JsonArray contentArray = jsonObject.getAsJsonArray("content");
+                android.util.Log.d("ProductDetailActivity", "parseCommentsDirectlyFromResponse: Found content array with size: " + contentArray.size());
+
                 for (int i = 0; i < contentArray.size(); i++) {
-                    com.google.gson.JsonObject commentObj = contentArray.get(i).getAsJsonObject();
-                    Comment comment = parseCommentFromJson(commentObj);
-                    if (comment != null) {
-                        commentList.add(comment);
+                    try {
+                        com.google.gson.JsonElement element = contentArray.get(i);
+                        android.util.Log.d("ProductDetailActivity", "parseCommentsDirectlyFromResponse: Element " + i + ": " + element);
+
+                        // Check if element is a JsonObject (proper CommentDTO) or just a String
+                        if (element.isJsonObject()) {
+                            com.google.gson.JsonObject commentObj = element.getAsJsonObject();
+                            Comment comment = parseCommentFromJsonObject(commentObj);
+                            if (comment != null) {
+                                android.util.Log.d("ProductDetailActivity", "parseCommentsDirectlyFromResponse: Successfully parsed comment: " + comment.getCommentId());
+                                commentList.add(comment);
+                            } else {
+                                android.util.Log.w("ProductDetailActivity", "parseCommentsDirectlyFromResponse: Failed to parse comment " + i);
+                            }
+                        } else if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString()) {
+                            // If it's just a String (content field), try to find full comment object
+                            android.util.Log.w("ProductDetailActivity", "parseCommentsDirectlyFromResponse: Element " + i + " is just a String, not a full comment object");
+                        }
+                    } catch (Exception e) {
+                        android.util.Log.e("ProductDetailActivity", "parseCommentsDirectlyFromResponse: Error parsing element " + i + ": " + e.getMessage(), e);
                     }
                 }
+            } else {
+                android.util.Log.w("ProductDetailActivity", "parseCommentsDirectlyFromResponse: No 'content' field found. Keys: " + jsonObject.keySet());
             }
         } catch (Exception e) {
-            android.util.Log.e("ProductDetailActivity", "Error parsing comments: " + e.getMessage(), e);
+            android.util.Log.e("ProductDetailActivity", "Error parsing comments directly from response: " + e.getMessage(), e);
+            e.printStackTrace();
         }
         return commentList;
     }
 
-    private Comment parseCommentFromJson(com.google.gson.JsonObject json) {
+    private Comment parseCommentFromJsonObject(com.google.gson.JsonObject json) {
         try {
             Comment comment = new Comment();
-            if (json.has("commentId")) comment.setCommentId(json.get("commentId").getAsLong());
-            if (json.has("productId")) comment.setProductId(json.get("productId").getAsLong());
-            if (json.has("userId")) comment.setUserId(json.get("userId").getAsLong());
+
+            if (json.has("commentId") && !json.get("commentId").isJsonNull()) {
+                comment.setCommentId(json.get("commentId").getAsLong());
+            }
+
+            if (json.has("productId") && !json.get("productId").isJsonNull()) {
+                comment.setProductId(json.get("productId").getAsLong());
+            }
+
+            if (json.has("userId") && !json.get("userId").isJsonNull()) {
+                comment.setUserId(json.get("userId").getAsLong());
+            }
+
             if (json.has("reviewId") && !json.get("reviewId").isJsonNull()) {
                 comment.setReviewId(json.get("reviewId").getAsLong());
             }
-            if (json.has("content")) comment.setContent(json.get("content").getAsString());
-            if (json.has("userName")) comment.setUserName(json.get("userName").getAsString());
+
+            if (json.has("content") && !json.get("content").isJsonNull()) {
+                comment.setContent(json.get("content").getAsString());
+            }
+
+            if (json.has("userName") && !json.get("userName").isJsonNull()) {
+                comment.setUserName(json.get("userName").getAsString());
+            }
+
             if (json.has("userAvatarUrl") && !json.get("userAvatarUrl").isJsonNull()) {
                 comment.setUserAvatarUrl(json.get("userAvatarUrl").getAsString());
             }
+
             if (json.has("createdAt") && !json.get("createdAt").isJsonNull()) {
                 String createdAtStr = json.get("createdAt").getAsString();
                 comment.setCreatedAt(parseDateTime(createdAtStr));
             }
+
             if (json.has("updatedAt") && !json.get("updatedAt").isJsonNull()) {
                 String updatedAtStr = json.get("updatedAt").getAsString();
                 comment.setUpdatedAt(parseDateTime(updatedAtStr));
             }
+
             return comment;
         } catch (Exception e) {
-            android.util.Log.e("ProductDetailActivity", "Error parsing single comment: " + e.getMessage(), e);
+            android.util.Log.e("ProductDetailActivity", "Error parsing single comment from JsonObject: " + e.getMessage(), e);
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private Comment parseCommentFromMap(java.util.Map<String, Object> map) {
+        try {
+            Comment comment = new Comment();
+
+            if (map.containsKey("commentId")) {
+                Object commentIdObj = map.get("commentId");
+                if (commentIdObj instanceof Number) {
+                    comment.setCommentId(((Number) commentIdObj).longValue());
+                }
+            }
+
+            if (map.containsKey("productId")) {
+                Object productIdObj = map.get("productId");
+                if (productIdObj instanceof Number) {
+                    comment.setProductId(((Number) productIdObj).longValue());
+                }
+            }
+
+            if (map.containsKey("userId")) {
+                Object userIdObj = map.get("userId");
+                if (userIdObj instanceof Number) {
+                    comment.setUserId(((Number) userIdObj).longValue());
+                }
+            }
+
+            if (map.containsKey("reviewId") && map.get("reviewId") != null) {
+                Object reviewIdObj = map.get("reviewId");
+                if (reviewIdObj instanceof Number) {
+                    comment.setReviewId(((Number) reviewIdObj).longValue());
+                }
+            }
+
+            if (map.containsKey("content")) {
+                Object contentObj = map.get("content");
+                if (contentObj != null) {
+                    comment.setContent(contentObj.toString());
+                }
+            }
+
+            if (map.containsKey("userName")) {
+                Object userNameObj = map.get("userName");
+                if (userNameObj != null) {
+                    comment.setUserName(userNameObj.toString());
+                }
+            }
+
+            if (map.containsKey("userAvatarUrl") && map.get("userAvatarUrl") != null) {
+                Object avatarObj = map.get("userAvatarUrl");
+                if (avatarObj != null) {
+                    comment.setUserAvatarUrl(avatarObj.toString());
+                }
+            }
+
+            if (map.containsKey("createdAt") && map.get("createdAt") != null) {
+                Object createdAtObj = map.get("createdAt");
+                if (createdAtObj != null) {
+                    String createdAtStr = createdAtObj.toString();
+                    comment.setCreatedAt(parseDateTime(createdAtStr));
+                }
+            }
+
+            if (map.containsKey("updatedAt") && map.get("updatedAt") != null) {
+                Object updatedAtObj = map.get("updatedAt");
+                if (updatedAtObj != null) {
+                    String updatedAtStr = updatedAtObj.toString();
+                    comment.setUpdatedAt(parseDateTime(updatedAtStr));
+                }
+            }
+
+            return comment;
+        } catch (Exception e) {
+            android.util.Log.e("ProductDetailActivity", "Error parsing single comment from map: " + e.getMessage(), e);
+            e.printStackTrace();
             return null;
         }
     }

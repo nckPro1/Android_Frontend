@@ -172,6 +172,7 @@ public class ProfileActivity extends AppCompatActivity {
         rvProfileMenu.setLayoutManager(new LinearLayoutManager(this));
         List<ProfileMenuItem> menuItems = new ArrayList<>();
         menuItems.add(new ProfileMenuItem("SETTINGS", "Settings", R.drawable.ic_settings));
+        menuItems.add(new ProfileMenuItem("NOTIFICATIONS", "Thông báo", R.drawable.ic_notifications));
         menuItems.add(new ProfileMenuItem("MESSAGES", "Tin nhắn", R.drawable.ic_notifications));
         menuItems.add(new ProfileMenuItem("ORDERS", "My Orders", R.drawable.ic_orders));
         menuItems.add(new ProfileMenuItem("FAVORITES", "Favorites", R.drawable.ic_favorites));
@@ -191,6 +192,10 @@ public class ProfileActivity extends AppCompatActivity {
         if ("SETTINGS".equals(item.getId())) {
             android.util.Log.d("ProfileActivity", "Navigating to EditProfileActivity");
             Intent intent = new Intent(ProfileActivity.this, EditProfileActivity.class);
+            startActivity(intent);
+        } else if ("NOTIFICATIONS".equals(item.getId())) {
+            android.util.Log.d("ProfileActivity", "Navigating to NotificationListActivity");
+            Intent intent = new Intent(ProfileActivity.this, com.example.frontend.ui.notification.NotificationListActivity.class);
             startActivity(intent);
         } else if ("MESSAGES".equals(item.getId())) {
             android.util.Log.d("ProfileActivity", "Navigating to ChatListActivity");
