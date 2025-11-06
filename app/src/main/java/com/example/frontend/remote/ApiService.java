@@ -45,6 +45,12 @@ import retrofit2.http.Path;
 import retrofit2.http.Query;
 
 public interface ApiService {
+    // ===============================
+    // AUTH REFRESH TOKEN
+    // ===============================
+    @POST("/api/auth/refresh")
+    Call<AuthResponse> refreshToken(@Body java.util.Map<String, String> body);
+
 
     @POST("/api/auth/google-login")
     Call<AuthResponse> loginWithGoogle(@Body GoogleLoginRequest googleLoginRequest);

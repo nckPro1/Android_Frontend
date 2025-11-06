@@ -81,7 +81,7 @@ public class FCMTokenManager {
         // Kiểm tra xem token này đã được gửi chưa
         String lastSentToken = prefs.getString(KEY_FCM_TOKEN, null);
         boolean tokenSent = prefs.getBoolean(KEY_TOKEN_SENT, false);
-        
+
         if (token.equals(lastSentToken) && tokenSent) {
             Log.d(TAG, "Token đã được gửi trước đó, bỏ qua");
             return;
@@ -104,6 +104,80 @@ public class FCMTokenManager {
                             .apply();
                 } else {
                     Log.e(TAG, "❌ Lỗi khi gửi FCM token lên server. Code: " + response.code());
+                    // Nếu Unauthorized do access token hết hạn, thử refresh và gửi lại một lần
+                    if (response.code() == 401) {
+                        Log.w(TAG, "Access token hết hạn (401), đang thử refresh token...");
+                        String refreshToken = tokenManager.getRefreshToken();
+                        if (refreshToken != null && !refreshToken.isEmpty()) {
+                            Log.d(TAG, "Refresh token có sẵn, đang gọi API refresh...");
+                            java.util.Map<String, String> body = new java.util.HashMap<>();
+                            body.put("refreshToken", refreshToken);
+                            apiService.refreshToken(body).enqueue(new Callback<com.example.frontend.model.AuthResponse>() {
+                                @Override
+                                public void onResponse(Call<com.example.frontend.model.AuthResponse> call2, Response<com.example.frontend.model.AuthResponse> resp2) {
+                                    Log.d(TAG, "Refresh token response code: " + resp2.code());
+                                    if (resp2.isSuccessful() && resp2.body() != null && resp2.body().isSuccess()) {
+                                        String newAccess = resp2.body().getAccessToken();
+                                        String newRefresh = resp2.body().getRefreshToken();
+                                        if (newAccess != null) {
+                                            Log.i(TAG, "✅ Refresh token thành công, lưu token mới và gửi lại FCM token");
+                                            tokenManager.saveTokens(newAccess, newRefresh != null ? newRefresh : refreshToken);
+                                            // Thử gửi lại một lần với token mới
+                                            apiService.updateFCMToken("Bearer " + newAccess, userId, token)
+                                                    .enqueue(new Callback<com.example.frontend.model.ApiResponse>() {
+                                                        @Override
+                                                        public void onResponse(Call<com.example.frontend.model.ApiResponse> call3, Response<com.example.frontend.model.ApiResponse> resp3) {
+                                                            if (resp3.isSuccessful()) {
+                                                                Log.i(TAG, "✅ FCM token đã được gửi sau khi refresh token");
+                                                                prefs.edit()
+                                                                        .putString(KEY_FCM_TOKEN, token)
+                                                                        .putBoolean(KEY_TOKEN_SENT, true)
+                                                                        .apply();
+                                                            } else {
+                                                                Log.e(TAG, "❌ Gửi lại FCM token thất bại. Code: " + resp3.code());
+                                                                if (resp3.errorBody() != null) {
+                                                                    try {
+                                                                        Log.e(TAG, "Error body: " + resp3.errorBody().string());
+                                                                    } catch (Exception e) {
+                                                                        e.printStackTrace();
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                        @Override
+                                                        public void onFailure(Call<com.example.frontend.model.ApiResponse> call3, Throwable t3) {
+                                                            Log.e(TAG, "❌ Lỗi kết nối khi gửi lại FCM token", t3);
+                                                        }
+                                                    });
+                                        } else {
+                                            Log.e(TAG, "❌ Refresh token response không chứa access token mới");
+                                        }
+                                    } else {
+                                        String errorMsg = "code=" + resp2.code();
+                                        if (resp2.body() != null) {
+                                            errorMsg = resp2.body().getMessage();
+                                        } else if (resp2.errorBody() != null) {
+                                            try {
+                                                errorMsg = resp2.errorBody().string();
+                                            } catch (Exception e) {
+                                                e.printStackTrace();
+                                            }
+                                        }
+                                        Log.e(TAG, "❌ Refresh token thất bại: " + errorMsg);
+                                    }
+                                }
+                                @Override
+                                public void onFailure(Call<com.example.frontend.model.AuthResponse> call2, Throwable t2) {
+                                    Log.e(TAG, "❌ Lỗi kết nối khi refresh token", t2);
+                                    if (t2.getMessage() != null) {
+                                        Log.e(TAG, "Error message: " + t2.getMessage());
+                                    }
+                                }
+                            });
+                        } else {
+                            Log.w(TAG, "Không có refresh token để làm mới access token");
+                        }
+                    }
                     if (response.errorBody() != null) {
                         try {
                             Log.e(TAG, "Error body: " + response.errorBody().string());

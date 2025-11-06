@@ -1,13 +1,26 @@
 package com.example.frontend.model;
 
+import com.google.gson.annotations.SerializedName;
 import java.math.BigDecimal;
 
 public class OrderItemOption {
-    
+
+    @SerializedName("orderItemOptionId")
+    private Long orderItemOptionId;
+
+    @SerializedName("optionId")
     private Long optionId;
+
+    @SerializedName("orderItemId")
     private Long orderItemId;
+
+    @SerializedName("optionName")
     private String optionName;
+
+    @SerializedName("price")
     private BigDecimal additionalPrice;
+
+    @SerializedName("optionType")
     private String optionType; // SIZE, TOPPING, etc.
 
     // Constructors
@@ -21,6 +34,9 @@ public class OrderItemOption {
     }
 
     // Getters and Setters
+    public Long getOrderItemOptionId() { return orderItemOptionId; }
+    public void setOrderItemOptionId(Long orderItemOptionId) { this.orderItemOptionId = orderItemOptionId; }
+
     public Long getOptionId() { return optionId; }
     public void setOptionId(Long optionId) { this.optionId = optionId; }
 

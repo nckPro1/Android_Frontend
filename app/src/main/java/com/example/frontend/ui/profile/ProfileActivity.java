@@ -133,19 +133,26 @@ public class ProfileActivity extends AppCompatActivity {
             int itemId = item.getItemId();
             if (itemId == R.id.nav_home) {
                 startActivity(new Intent(this, HomeActivity.class));
+                finish();
                 return true;
             } else if (itemId == R.id.nav_categories) {
                 // Show Categories fragment
                 CategoriesFragment categoriesFragment = new CategoriesFragment();
                 showFragment(categoriesFragment);
                 return true;
+            } else if (itemId == R.id.nav_cart) {
+                // Navigate to Cart Activity
+                startActivity(new Intent(this, com.example.frontend.ui.cart.CartActivity.class));
+                return true;
             } else if (itemId == R.id.nav_profile) {
                 // Show profile content
                 showProfileContent();
                 return true;
+            } else if (itemId == R.id.nav_about) {
+                Toast.makeText(this, "About - Coming soon!", Toast.LENGTH_SHORT).show();
+                return true;
             }
-            Toast.makeText(this, "Tính năng đang phát triển", Toast.LENGTH_SHORT).show();
-            return true;
+            return false;
         });
     }
 

@@ -12,8 +12,8 @@ import retrofit2.converter.gson.GsonConverterFactory;
 public class ApiClient {
 
 
-    // Dùng thiết bị thật trên cùng Wi-Fi với backend
-    public static final String BASE_URL = "http://192.168.1.2:8080"; // IP máy thật
+    // Base URL dùng ngrok để truy cập backend từ thiết bị thật
+    public static final String BASE_URL = "https://unexemplary-summarizable-ellsworth.ngrok-free.dev/";
 
     private static Retrofit retrofit = null;
 
@@ -21,12 +21,12 @@ public class ApiClient {
         if (retrofit == null) {
             // Custom Gson configuration for LocalDateTime
             Gson gson = new GsonBuilder()
-                    .registerTypeAdapter(LocalDateTime.class, (JsonSerializer<LocalDateTime>) (src, typeOfSrc, context) -> 
-                        context.serialize(src.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)))
-                    .registerTypeAdapter(LocalDateTime.class, (JsonDeserializer<LocalDateTime>) (json, typeOfT, context) -> 
-                        LocalDateTime.parse(json.getAsString(), DateTimeFormatter.ISO_LOCAL_DATE_TIME))
+                    .registerTypeAdapter(LocalDateTime.class, (JsonSerializer<LocalDateTime>) (src, typeOfSrc, context) ->
+                            context.serialize(src.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)))
+                    .registerTypeAdapter(LocalDateTime.class, (JsonDeserializer<LocalDateTime>) (json, typeOfT, context) ->
+                            LocalDateTime.parse(json.getAsString(), DateTimeFormatter.ISO_LOCAL_DATE_TIME))
                     .create();
-                    
+
             retrofit = new Retrofit.Builder()
                     .baseUrl(BASE_URL)
                     .addConverterFactory(GsonConverterFactory.create(gson))

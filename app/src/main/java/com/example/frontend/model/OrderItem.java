@@ -1,32 +1,57 @@
 package com.example.frontend.model;
 
+import com.google.gson.annotations.SerializedName;
 import java.math.BigDecimal;
 import java.util.List;
 
 public class OrderItem {
-    
+
+    @SerializedName("orderItemId")
     private Long orderItemId;
+
+    @SerializedName("orderId")
     private Long orderId;
+
+    @SerializedName("productId")
     private Long productId;
+
+    @SerializedName("productName")
     private String productName;
+
+    @SerializedName("productImageUrl")
     private String productImage;
-    private BigDecimal productPrice;
+
+    @SerializedName("unitPrice")
+    private BigDecimal unitPrice;
+
+    @SerializedName("salePrice")
+    private BigDecimal salePrice;
+
+    @SerializedName("quantity")
     private Integer quantity;
+
+    @SerializedName("totalPrice")
     private BigDecimal subtotal;
+
+    @SerializedName("specialInstructions")
     private String specialInstructions;
+
+    @SerializedName("orderItemOptions")
     private List<OrderItemOption> selectedOptions;
 
     // Constructors
     public OrderItem() {}
 
-    public OrderItem(Long productId, String productName, String productImage, 
-                    BigDecimal productPrice, Integer quantity) {
+    public OrderItem(Long productId, String productName, String productImage,
+                     BigDecimal productPrice, Integer quantity) {
         this.productId = productId;
         this.productName = productName;
         this.productImage = productImage;
-        this.productPrice = productPrice;
+        this.unitPrice = productPrice;
         this.quantity = quantity;
-        this.subtotal = productPrice.multiply(BigDecimal.valueOf(quantity));
+        if (productPrice != null && quantity != null) {
+            this.subtotal = productPrice.multiply(BigDecimal.valueOf(quantity));
+        }
     }
 
     // Getters and Setters
@@ -45,14 +70,32 @@ public class OrderItem {
     public String getProductImage() { return productImage; }
     public void setProductImage(String productImage) { this.productImage = productImage; }
 
-    public BigDecimal getProductPrice() { return productPrice; }
-    public void setProductPrice(BigDecimal productPrice) { this.productPrice = productPrice; }
+    /**
+     * Lấy giá sản phẩm (ưu tiên salePrice, fallback unitPrice)
+     */
+    public BigDecimal getProductPrice() {
+        if (salePrice != null && salePrice.compareTo(BigDecimal.ZERO) > 0) {
+            return salePrice;
+        }
+        return unitPrice;
+    }
+
+    public void setProductPrice(BigDecimal productPrice) {
+        this.unitPrice = productPrice;
+    }
+
+    public BigDecimal getUnitPrice() { return unitPrice; }
+    public void setUnitPrice(BigDecimal unitPrice) { this.unitPrice = unitPrice; }
+
+    public BigDecimal getSalePrice() { return salePrice; }
+    public void setSalePrice(BigDecimal salePrice) { this.salePrice = salePrice; }
 
     public Integer getQuantity() { return quantity; }
-    public void setQuantity(Integer quantity) { 
+    public void setQuantity(Integer quantity) {
         this.quantity = quantity;
-        if (productPrice != null) {
-            this.subtotal = productPrice.multiply(BigDecimal.valueOf(quantity));
+        BigDecimal price = getProductPrice();
+        if (price != null && quantity != null) {
+            this.subtotal = price.multiply(BigDecimal.valueOf(quantity));
         }
     }
 
@@ -67,8 +110,9 @@ public class OrderItem {
 
     // Helper methods
     public void calculateSubtotal() {
-        if (productPrice != null && quantity != null) {
-            this.subtotal = productPrice.multiply(BigDecimal.valueOf(quantity));
+        BigDecimal price = getProductPrice();
+        if (price != null && quantity != null) {
+            this.subtotal = price.multiply(BigDecimal.valueOf(quantity));
         }
     }
 
@@ -80,8 +124,9 @@ public class OrderItem {
     }
 
     public String getFormattedProductPrice() {
-        if (productPrice != null) {
-            return String.format("%,.0f VNĐ", productPrice);
+        BigDecimal price = getProductPrice();
+        if (price != null) {
+            return String.format("%,.0f VNĐ", price);
         }
         return "0 VNĐ";
     }

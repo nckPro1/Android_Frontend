@@ -152,7 +152,7 @@ public class HomeActivity extends AppCompatActivity {
         products = new ArrayList<>();
         productAdapter = new ProductAdapter(products, null); // Không cần listener vì ProductAdapter tự xử lý
         rvPopularDishes.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
-        rvPopularDishes.setHasFixedSize(true);
+        rvPopularDishes.setHasFixedSize(false);
         rvPopularDishes.setAdapter(productAdapter);
 
         // Search wiring -> open SearchResultsActivity on submit

@@ -1,5 +1,6 @@
 package com.example.frontend.ui.order;
 
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -45,6 +46,7 @@ public class OrderDetailAdapter extends RecyclerView.Adapter<OrderDetailAdapter.
     }
 
     static class OrderDetailViewHolder extends RecyclerView.ViewHolder {
+        private static final String TAG = "OrderDetailAdapter";
         private ImageView imageViewProduct;
         private TextView textViewProductName;
         private TextView textViewProductPrice;
@@ -63,8 +65,17 @@ public class OrderDetailAdapter extends RecyclerView.Adapter<OrderDetailAdapter.
         }
 
         public void bind(OrderItem orderItem) {
+            Log.d(TAG, "Binding OrderItem: " + orderItem.getProductName());
+            Log.d(TAG, "  - ProductPrice: " + orderItem.getProductPrice());
+            Log.d(TAG, "  - Subtotal: " + orderItem.getSubtotal());
+            Log.d(TAG, "  - Quantity: " + orderItem.getQuantity());
+            Log.d(TAG, "  - ProductImage: " + orderItem.getProductImage());
+
             // Product name with options
             String productName = orderItem.getProductName();
+            if (productName == null || productName.trim().isEmpty()) {
+                productName = "Không có tên";
+            }
             if (orderItem.getSelectedOptions() != null && !orderItem.getSelectedOptions().isEmpty()) {
                 StringBuilder optionsText = new StringBuilder();
                 for (var option : orderItem.getSelectedOptions()) {
@@ -74,9 +85,34 @@ public class OrderDetailAdapter extends RecyclerView.Adapter<OrderDetailAdapter.
                 productName += " (" + optionsText.toString() + ")";
             }
             textViewProductName.setText(productName);
-            
-            textViewProductPrice.setText(PriceFormatter.format(orderItem.getProductPrice()));
-            textViewQuantity.setText("x" + orderItem.getQuantity());
+
+            // Hiển thị giá: nếu thiếu productPrice, suy ra từ subtotal/quantity
+            java.math.BigDecimal productPrice = orderItem.getProductPrice();
+            if (productPrice == null) {
+                Log.d(TAG, "ProductPrice is null, calculating from subtotal/quantity");
+                if (orderItem.getSubtotal() != null && orderItem.getQuantity() != null && orderItem.getQuantity() > 0) {
+                    try {
+                        productPrice = orderItem.getSubtotal().divide(new java.math.BigDecimal(orderItem.getQuantity()), java.math.RoundingMode.HALF_UP);
+                        Log.d(TAG, "Calculated price: " + productPrice);
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error calculating price: " + e.getMessage());
+                        productPrice = java.math.BigDecimal.ZERO;
+                    }
+                } else {
+                    Log.w(TAG, "Cannot calculate price: subtotal=" + orderItem.getSubtotal() + ", quantity=" + orderItem.getQuantity());
+                    productPrice = java.math.BigDecimal.ZERO;
+                }
+            }
+            textViewProductPrice.setText(PriceFormatter.format(productPrice));
+
+            // Quantity
+            if (orderItem.getQuantity() != null) {
+                textViewQuantity.setText("x" + orderItem.getQuantity());
+            } else {
+                textViewQuantity.setText("x0");
+            }
+
+            // Subtotal
             textViewSubtotal.setText(PriceFormatter.format(orderItem.getSubtotal()));
 
             // Special instructions
@@ -91,14 +127,27 @@ public class OrderDetailAdapter extends RecyclerView.Adapter<OrderDetailAdapter.
             String imageUrl = orderItem.getProductImage();
             if (imageUrl != null && !imageUrl.trim().isEmpty()) {
                 String fullImageUrl = ImageUrlBuilder.buildFullUrl(imageUrl);
+                Log.d(TAG, "Loading image from URL: " + fullImageUrl);
                 Picasso.get()
                         .load(fullImageUrl)
                         .placeholder(R.drawable.ic_food_placeholder)
                         .error(R.drawable.ic_food_placeholder)
                         .fit()
                         .centerCrop()
-                        .into(imageViewProduct);
+                        .into(imageViewProduct, new com.squareup.picasso.Callback() {
+                            @Override
+                            public void onSuccess() {
+                                Log.d(TAG, "Image loaded successfully");
+                            }
+
+                            @Override
+                            public void onError(Exception e) {
+                                Log.e(TAG, "Error loading image: " + e.getMessage());
+                                e.printStackTrace();
+                            }
+                        });
             } else {
+                Log.w(TAG, "Image URL is null or empty, using placeholder");
                 imageViewProduct.setImageResource(R.drawable.ic_food_placeholder);
             }
         }
