@@ -13,7 +13,7 @@ public class ApiClient {
 
 
     // Base URL dùng ngrok để truy cập backend từ thiết bị thật
-    public static final String BASE_URL = "https://unexemplary-summarizable-ellsworth.ngrok-free.dev/";
+    public static final String BASE_URL = "http://10.33.71.21:8080/";
 
     private static Retrofit retrofit = null;
 

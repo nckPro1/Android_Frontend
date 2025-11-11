@@ -17,6 +17,7 @@ import com.example.frontend.local.TokenManager;
 import com.example.frontend.model.UserDto;
 import com.example.frontend.remote.ApiClient;
 import com.example.frontend.remote.ApiService;
+import com.example.frontend.util.CircleTransform;
 import com.example.frontend.util.ImagePickerUtil;
 import com.example.frontend.util.ImageUploadUtil;
 import com.google.android.material.button.MaterialButton;
@@ -37,8 +38,8 @@ public class EditProfileActivity extends AppCompatActivity {
 
     // Views
     private ShapeableImageView imgAvatar;
-    private TextView tvUserName, tvUserEmail, tvUserId;
-    private TextView tvDisplayFullName, tvDisplayPhone, tvDisplayRole;
+    private TextView tvUserName, tvUserEmail;
+    private TextView tvDisplayFullName, tvDisplayPhone;
     private TextInputEditText etFullName, etPhoneNumber;
     private MaterialButton btnSave, btnEdit;
     private ProgressBar progressBar, progressAvatar;
@@ -51,9 +52,7 @@ public class EditProfileActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // Đảm bảo bạn sử dụng đúng layout cho màn hình chỉnh sửa.
-        // Tên gợi ý: R.layout.activity_edit_profile
-        setContentView(R.layout.activity_edit_profile); // <-- KIỂM TRA LẠI TÊN FILE LAYOUT NÀY
+        setContentView(R.layout.activity_edit_profile);
 
         tokenManager = new TokenManager(this);
         apiService = ApiClient.getClient().create(ApiService.class);
@@ -64,7 +63,7 @@ public class EditProfileActivity extends AppCompatActivity {
             public void onImageSelected(Uri imageUri) {
                 selectedImageUri = imageUri;
                 Picasso.get().load(imageUri)
-                        .transform(new com.squareup.picasso.CircleTransform())
+                        .transform(new CircleTransform()) // Use the correct CircleTransform
                         .into(imgAvatar);
                 uploadSelectedImage();
             }
@@ -87,14 +86,12 @@ public class EditProfileActivity extends AppCompatActivity {
             getSupportActionBar().setDisplayShowTitleEnabled(false);
         }
 
-        // Initialize views from your edit layout
+        // Initialize views
         imgAvatar = findViewById(R.id.imgAvatar);
         tvUserName = findViewById(R.id.tvUserName);
         tvUserEmail = findViewById(R.id.tvUserEmail);
-        tvUserId = findViewById(R.id.tvUserId);
         tvDisplayFullName = findViewById(R.id.tvDisplayFullName);
         tvDisplayPhone = findViewById(R.id.tvDisplayPhone);
-        tvDisplayRole = findViewById(R.id.tvDisplayRole);
         etFullName = findViewById(R.id.etFullName);
         etPhoneNumber = findViewById(R.id.etPhoneNumber);
         btnSave = findViewById(R.id.btnSave);
@@ -105,10 +102,7 @@ public class EditProfileActivity extends AppCompatActivity {
         cardEditForm = findViewById(R.id.cardEditForm);
 
         // Set click listeners
-        btnEdit.setOnClickListener(v -> {
-            Toast.makeText(this, "Edit button clicked!", Toast.LENGTH_SHORT).show();
-            toggleEditMode();
-        });
+        btnEdit.setOnClickListener(v -> toggleEditMode());
         btnSave.setOnClickListener(v -> saveProfile());
         imgAvatar.setOnClickListener(v -> imagePickerUtil.showImagePickerDialog());
     }
@@ -138,19 +132,23 @@ public class EditProfileActivity extends AppCompatActivity {
     private void displayUserInfo(UserDto user) {
         tvUserName.setText(user.getFullName());
         tvUserEmail.setText(user.getEmail());
-        tvUserId.setText("ID: " + user.getUserId());
 
         tvDisplayFullName.setText(user.getFullName());
         tvDisplayPhone.setText(user.getPhoneNumber());
-        tvDisplayRole.setText(user.getRoleId() != null && user.getRoleId() == 2 ? "Quản trị viên" : "Người dùng");
 
         etFullName.setText(user.getFullName());
         etPhoneNumber.setText(user.getPhoneNumber());
 
         if (user.getAvatarUrl() != null && !user.getAvatarUrl().isEmpty()) {
-            String avatarUrl = user.getAvatarUrl().startsWith("/") ? ApiClient.BASE_URL + user.getAvatarUrl() : user.getAvatarUrl();
+            // The URL from backend might be relative, so construct the full URL
+            String avatarUrl = user.getAvatarUrl();
+            if (!avatarUrl.startsWith("http")) {
+                avatarUrl = ApiClient.BASE_URL + (avatarUrl.startsWith("/") ? avatarUrl.substring(1) : avatarUrl);
+            }
             Picasso.get().load(avatarUrl)
-                    .transform(new com.squareup.picasso.CircleTransform())
+                    .transform(new CircleTransform()) // Use the correct CircleTransform
+                    .placeholder(R.drawable.ic_default_avatar) // Add a placeholder
+                    .error(R.drawable.ic_default_avatar)       // Add an error image
                     .into(imgAvatar);
         }
     }
@@ -163,11 +161,13 @@ public class EditProfileActivity extends AppCompatActivity {
             cardProfileInfo.setVisibility(View.GONE);
             cardEditForm.setVisibility(View.VISIBLE);
         } else {
-            // Logic to cancel (can be implemented if needed)
+            // Logic to cancel
             btnEdit.setVisibility(View.VISIBLE);
             btnSave.setVisibility(View.GONE);
             cardProfileInfo.setVisibility(View.VISIBLE);
             cardEditForm.setVisibility(View.GONE);
+            // Reset fields to original values
+            displayUserInfo(currentUser);
         }
     }
 
@@ -192,7 +192,7 @@ public class EditProfileActivity extends AppCompatActivity {
                     Toast.makeText(EditProfileActivity.this, "Cập nhật thành công!", Toast.LENGTH_SHORT).show();
                     tokenManager.saveUserName(currentUser.getFullName());
                     displayUserInfo(currentUser);
-                    toggleEditMode();
+                    toggleEditMode(); // Switch back to display mode
                 } else {
                     Toast.makeText(EditProfileActivity.this, "Cập nhật thất bại", Toast.LENGTH_SHORT).show();
                 }
@@ -214,7 +214,8 @@ public class EditProfileActivity extends AppCompatActivity {
                 showAvatarLoading(false);
                 Toast.makeText(EditProfileActivity.this, "Upload avatar thành công!", Toast.LENGTH_SHORT).show();
                 currentUser.setAvatarUrl(imageUrl);
-                // Optionally, save this new URL to the backend immediately
+                // Immediately save the new avatar URL to the user's profile on the server
+                saveProfile();
             }
             @Override
             public void onUploadError(String error) {
@@ -241,7 +242,6 @@ public class EditProfileActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    // You might not need these if using the newer ActivityResultContracts API in ImagePickerUtil
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);

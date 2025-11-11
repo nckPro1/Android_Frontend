@@ -1,7 +1,7 @@
 package com.example.frontend.util;
 
 public class ImageUrlBuilder {
-    private static final String BASE_URL = "https://unexemplary-summarizable-ellsworth.ngrok-free.dev";
+    private static final String BASE_URL = "http://10.33.71.21:8080";
 
     public static String buildFullUrl(String imageUrl) {
         if (imageUrl == null || imageUrl.isEmpty()) {
